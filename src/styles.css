@@ -1,0 +1,73 @@
+/* Global styles */
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-ar: 'Cairo', system-ui, -apple-system, sans-serif;
+    --font-en: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  html {
+    font-family: var(--font-en);
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+
+  html[dir="rtl"] {
+    font-family: var(--font-ar);
+  }
+
+  body {
+    @apply antialiased bg-slate-50 text-slate-800 transition-colors duration-200 overflow-x-hidden min-h-screen;
+  }
+
+  html.dark body, .dark body, body.dark {
+    @apply bg-slate-950 text-slate-100;
+  }
+}
+
+/* Material Icons vertically centered alignment */
+.mat-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+/* Print layout for PDF reports */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+}

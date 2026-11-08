@@ -1,0 +1,6 @@
+{
+  "name": "CheckMate Pro - Smart Checklist & Task Management",
+  "description": "Interactive checklist and task management web app with real-time syncing, offline support, bilingual Arabic/English localization, analytics, and collaboration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

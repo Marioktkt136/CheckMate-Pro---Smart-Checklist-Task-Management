@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>CheckMate Pro - Smart Checklist &amp; Task Management</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Interactive checklist and task management web app with real-time syncing, offline support, bilingual Arabic/English localization, analytics, and collaboration." />
+    <meta property="og:title" content="CheckMate Pro - Smart Checklist &amp; Task Management" />
+    <meta property="og:description" content="Interactive checklist and task management web app with real-time syncing, offline support, bilingual Arabic/English localization, analytics, and collaboration." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <script>
+      window.gm_authFailure = function() {
+        window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
+      };
+      const origConsoleError = console.error;
+      console.error = function(...args) {
+        origConsoleError.apply(console, args);
+        const msg = args.map(a => String(a)).join(' ');
+        if (msg.includes('OverQuotaMapError') || msg.includes('QuotaExceededError')) {
+          window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
+        }
+      };
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA99x6srKNI6RZCiz70nvemLTrQQb_5jgM&libraries=places,marker&v=weekly" async defer></script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>

@@ -1,0 +1,218 @@
+<div class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors">
+  
+  <!-- Global Top Navigation Bar -->
+  <app-navbar
+    (openNewProjectModal)="openNewProject()"
+    (openAuthModal)="openAuth()"
+    (openWorkspaceModal)="openWorkspace()"
+    (triggerPdfExport)="exportPdf()"
+    (triggerCsvExport)="exportCsv()"
+  ></app-navbar>
+
+  <!-- Main View Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    
+    <!-- KPI Header Stats -->
+    <app-dashboard-stats
+      (openNewItemModal)="openAddItem()"
+      (openAiAdvisorModal)="openConsultAi(null)"
+    ></app-dashboard-stats>
+
+    <!-- Main Navigation Tabs -->
+    <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 mb-6 overflow-x-auto text-sm font-semibold">
+      
+      <!-- 1. Checklist Tab -->
+      <button
+        type="button"
+        (click)="setTab('checklist')"
+        class="pb-3 px-3.5 border-b-2 flex items-center gap-2 transition cursor-pointer shrink-0"
+        [class.border-blue-600]="activeTab() === 'checklist'"
+        [class.text-blue-600]="activeTab() === 'checklist'"
+        [class.dark:text-blue-400]="activeTab() === 'checklist'"
+        [class.border-transparent]="activeTab() !== 'checklist'"
+        [class.text-slate-500]="activeTab() !== 'checklist'"
+        [class.hover:text-slate-800]="activeTab() !== 'checklist'"
+        [class.dark:hover:text-slate-200]="activeTab() !== 'checklist'"
+      >
+        <mat-icon class="text-lg">checklist</mat-icon>
+        <span>{{ i18n.t().checklist }}</span>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+          {{ storage.currentProjectItems().length }}
+        </span>
+      </button>
+
+      <!-- 2. Calendar Tab -->
+      <button
+        type="button"
+        (click)="setTab('calendar')"
+        class="pb-3 px-3.5 border-b-2 flex items-center gap-2 transition cursor-pointer shrink-0"
+        [class.border-blue-600]="activeTab() === 'calendar'"
+        [class.text-blue-600]="activeTab() === 'calendar'"
+        [class.dark:text-blue-400]="activeTab() === 'calendar'"
+        [class.border-transparent]="activeTab() !== 'calendar'"
+        [class.text-slate-500]="activeTab() !== 'calendar'"
+        [class.hover:text-slate-800]="activeTab() !== 'calendar'"
+        [class.dark:hover:text-slate-200]="activeTab() !== 'calendar'"
+      >
+        <mat-icon class="text-lg">calendar_month</mat-icon>
+        <span>{{ i18n.t().calendar }}</span>
+      </button>
+
+      <!-- 3. Analytics Tab -->
+      <button
+        type="button"
+        (click)="setTab('analytics')"
+        class="pb-3 px-3.5 border-b-2 flex items-center gap-2 transition cursor-pointer shrink-0"
+        [class.border-blue-600]="activeTab() === 'analytics'"
+        [class.text-blue-600]="activeTab() === 'analytics'"
+        [class.dark:text-blue-400]="activeTab() === 'analytics'"
+        [class.border-transparent]="activeTab() !== 'analytics'"
+        [class.text-slate-500]="activeTab() !== 'analytics'"
+        [class.hover:text-slate-800]="activeTab() !== 'analytics'"
+        [class.dark:hover:text-slate-200]="activeTab() !== 'analytics'"
+      >
+        <mat-icon class="text-lg">pie_chart</mat-icon>
+        <span>{{ i18n.t().analytics }}</span>
+      </button>
+
+      <!-- 4. Team Chat & AI Advisor Tab -->
+      <button
+        type="button"
+        (click)="setTab('chat')"
+        class="pb-3 px-3.5 border-b-2 flex items-center gap-2 transition cursor-pointer shrink-0"
+        [class.border-purple-600]="activeTab() === 'chat'"
+        [class.text-purple-600]="activeTab() === 'chat'"
+        [class.dark:text-purple-400]="activeTab() === 'chat'"
+        [class.border-transparent]="activeTab() !== 'chat'"
+        [class.text-slate-500]="activeTab() !== 'chat'"
+        [class.hover:text-slate-800]="activeTab() !== 'chat'"
+        [class.dark:hover:text-slate-200]="activeTab() !== 'chat'"
+      >
+        <mat-icon class="text-lg">forum</mat-icon>
+        <span>{{ i18n.t().teamChat }}</span>
+        <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+      </button>
+
+      <!-- 5. Showroom Maps Tab (Google Maps) -->
+      <button
+        type="button"
+        (click)="setTab('maps')"
+        class="pb-3 px-3.5 border-b-2 flex items-center gap-2 transition cursor-pointer shrink-0"
+        [class.border-emerald-600]="activeTab() === 'maps'"
+        [class.text-emerald-600]="activeTab() === 'maps'"
+        [class.dark:text-emerald-400]="activeTab() === 'maps'"
+        [class.border-transparent]="activeTab() !== 'maps'"
+        [class.text-slate-500]="activeTab() !== 'maps'"
+        [class.hover:text-slate-800]="activeTab() !== 'maps'"
+        [class.dark:hover:text-slate-200]="activeTab() !== 'maps'"
+      >
+        <mat-icon class="text-lg">map</mat-icon>
+        <span>{{ i18n.currentLang() === 'ar' ? 'خريطة المعارض (Google Maps)' : 'Showrooms Map' }}</span>
+        <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold">
+          Maps
+        </span>
+      </button>
+
+      <!-- Workspace & Firebase Quick Trigger -->
+      <div class="ms-auto flex items-center gap-2 pb-2">
+        <button
+          type="button"
+          (click)="openWorkspace()"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
+        >
+          <mat-icon class="!text-sm !w-4 !h-4">cloud_sync</mat-icon>
+          <span>{{ i18n.currentLang() === 'ar' ? 'Google Workspace و Firebase' : 'Workspace & Firebase' }}</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Tab View Display -->
+    @if (activeTab() === 'checklist') {
+      <app-checklist-view
+        (addItemTrigger)="openAddItem()"
+        (editItemTrigger)="openEditItem($event)"
+        (consultAiTrigger)="openConsultAi($event)"
+        (openCommentsTrigger)="openComments($event)"
+        (openAttachmentsTrigger)="openAttachments($event)"
+      ></app-checklist-view>
+    }
+
+    @if (activeTab() === 'calendar') {
+      <app-calendar-view></app-calendar-view>
+    }
+
+    @if (activeTab() === 'analytics') {
+      <app-analytics-view></app-analytics-view>
+    }
+
+    @if (activeTab() === 'chat') {
+      <app-team-chat></app-team-chat>
+    }
+
+    @if (activeTab() === 'maps') {
+      <app-maps-view
+        [items]="storage.currentProjectItems()"
+        [lang]="i18n.currentLang()"
+        (itemUpdated)="onMapItemUpdated($event)"
+      ></app-maps-view>
+    }
+
+  </main>
+
+  <!-- Modals -->
+  @if (showWorkspaceModal()) {
+    <app-workspace-modal
+      [project]="storage.activeProject()"
+      [items]="storage.currentProjectItems()"
+      [lang]="i18n.currentLang()"
+      (closeModal)="showWorkspaceModal.set(false)"
+    ></app-workspace-modal>
+  }
+  @if (showItemModal()) {
+    <app-item-modal
+      [item]="editingItem()"
+      (closeModal)="showItemModal.set(false)"
+    ></app-item-modal>
+  }
+
+  @if (showAiAdvisorModal()) {
+    <app-ai-advisor-modal
+      [item]="consultingItem()"
+      (closeModal)="showAiAdvisorModal.set(false)"
+    ></app-ai-advisor-modal>
+  }
+
+  @if (showCommentsModal() && activeCommentsItem()) {
+    <app-comments-modal
+      [item]="activeCommentsItem()!"
+      (closeModal)="showCommentsModal.set(false)"
+    ></app-comments-modal>
+  }
+
+  @if (showAttachmentsModal() && activeAttachmentsItem()) {
+    <app-attachments-modal
+      [item]="activeAttachmentsItem()!"
+      (closeModal)="showAttachmentsModal.set(false)"
+    ></app-attachments-modal>
+  }
+
+  @if (showProjectModal()) {
+    <app-project-modal
+      (closeModal)="showProjectModal.set(false)"
+    ></app-project-modal>
+  }
+
+  @if (showAuthModal()) {
+    <app-auth-modal
+      (closeModal)="showAuthModal.set(false)"
+    ></app-auth-modal>
+  }
+
+  @if (showPrintReport()) {
+    <app-print-report
+      (closeReport)="showPrintReport.set(false)"
+    ></app-print-report>
+  }
+
+</div>

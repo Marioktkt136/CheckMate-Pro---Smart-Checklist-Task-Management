@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Projects collection
+    match /projects/{projectId} {
+      function isValidProject(data) {
+        return data.id is string && data.id.size() <= 128 &&
+               data.nameAr is string && data.nameAr.size() <= 100 &&
+               data.budget is number && data.budget >= 0;
+      }
+
+      allow read: if isSignedIn() || true;
+      allow create: if isSignedIn() && isValidId(projectId) && isValidProject(incoming());
+      allow update: if isSignedIn() && isValidId(projectId) && isValidProject(incoming());
+      allow delete: if isSignedIn() && isValidId(projectId);
+    }
+
+    // Checklist items collection
+    match /items/{itemId} {
+      function isValidItem(data) {
+        return data.id is string && data.id.size() <= 128 &&
+               data.titleAr is string && data.titleAr.size() <= 150 &&
+               data.folderId is string && data.folderId.size() <= 128;
+      }
+
+      allow read: if isSignedIn() || true;
+      allow create: if isSignedIn() && isValidId(itemId) && isValidItem(incoming());
+      allow update: if isSignedIn() && isValidId(itemId) && isValidItem(incoming());
+      allow delete: if isSignedIn() && isValidId(itemId);
+    }
+  }
+}

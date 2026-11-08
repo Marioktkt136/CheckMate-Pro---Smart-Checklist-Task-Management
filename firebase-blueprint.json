@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "A checklist category or folder of items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nameAr": { "type": "string", "maxLength": 100 },
+        "nameEn": { "type": "string", "maxLength": 100 },
+        "icon": { "type": "string", "maxLength": 50 },
+        "color": { "type": "string", "maxLength": 20 },
+        "budget": { "type": "number" },
+        "descriptionAr": { "type": "string", "maxLength": 300 },
+        "descriptionEn": { "type": "string", "maxLength": 300 },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "nameAr", "budget"]
+    },
+    "ChecklistItem": {
+      "title": "ChecklistItem",
+      "description": "An appliance or checklist item with status, price, notes, and store location",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "itemNumber": { "type": "number" },
+        "folderId": { "type": "string" },
+        "category": { "type": "string", "maxLength": 100 },
+        "titleAr": { "type": "string", "maxLength": 150 },
+        "titleEn": { "type": "string", "maxLength": 150 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "myNotes": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["pending", "comparing", "purchased", "postponed"] },
+        "priority": { "type": "string", "enum": ["urgent", "high", "medium", "low"] },
+        "estimatedCost": { "type": "number" },
+        "actualCost": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "targetDate": { "type": "string", "maxLength": 20 },
+        "storeName": { "type": "string", "maxLength": 150 },
+        "storeAddress": { "type": "string", "maxLength": 250 },
+        "storeLat": { "type": "number" },
+        "storeLng": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "titleAr", "folderId"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Top-level checklist projects and folders"
+    },
+    "/items/{itemId}": {
+      "schema": "ChecklistItem",
+      "description": "Checklist items belonging to projects"
+    }
+  }
+}
