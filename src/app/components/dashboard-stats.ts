@@ -126,7 +126,7 @@ import { calculateChecklistStats } from '../core/checklist-rules';
               <span class="text-xl font-bold text-slate-900 dark:text-slate-100">
                 {{ stats().totalActual.toLocaleString() }}
               </span>
-              <span class="text-xs text-slate-400 font-medium">ج.م</span>
+              <span class="text-xs text-slate-400 font-medium">{{ i18n.isRtl() ? 'ج.م' : 'EGP' }}</span>
             </div>
           </div>
         </div>

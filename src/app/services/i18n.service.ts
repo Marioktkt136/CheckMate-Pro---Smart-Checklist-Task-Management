@@ -8,6 +8,8 @@ export interface Translations {
   projectTitle: string;
   allProjects: string;
   newProject: string;
+  currentProject: string;
+  selectProject: string;
   dashboard: string;
   checklist: string;
   calendar: string;
@@ -21,6 +23,9 @@ export interface Translations {
   offline: string;
   syncing: string;
   pendingSync: string;
+  cloudOnline: string;
+  cloudOffline: string;
+  cloudPending: string;
   totalItems: string;
   completed: string;
   inComparison: string;
@@ -70,6 +75,23 @@ export interface Translations {
   askAiDesc: string;
   login: string;
   logout: string;
+  signIn: string;
+  signUp: string;
+  username: string;
+  password: string;
+  fullName: string;
+  email: string;
+  sessionTimeout: string;
+  sessionRemaining: string;
+  sessionExpired: string;
+  loginToContinue: string;
+  quickDemoLogin: string;
+  orEnterCredentials: string;
+  invalidCredentials: string;
+  userAlreadyExists: string;
+  registrationSuccess: string;
+  selectRole: string;
+  chooseAvatar: string;
   switchUser: string;
   mfaSecured: string;
   twoFactorAuth: string;
@@ -87,6 +109,23 @@ export interface Translations {
   backupData: string;
   restoreData: string;
   quickDemoUsers: string;
+  allData: string;
+  myPrivateData: string;
+  publishedToAll: string;
+  accountData: string;
+  importGoogleSheets: string;
+  clickToChangeStatus: string;
+  privateBadge: string;
+  publishedBadge: string;
+  publishedToggleHint: string;
+  brandAndStore: string;
+  orderExcel: string;
+  byPriority: string;
+  byName: string;
+  byCost: string;
+  byStatus: string;
+  allCount: string;
+  itemsUnit: string;
 }
 
 const AR_TRANSLATIONS: Translations = {
@@ -95,6 +134,8 @@ const AR_TRANSLATIONS: Translations = {
   projectTitle: 'قائمة الأجهزة الكهربائية (استثمار العمر)',
   allProjects: 'المشاريع والمجلدات',
   newProject: 'مجلد مشروع جديد',
+  currentProject: 'المشروع الحالي:',
+  selectProject: 'اختر مشروعاً...',
   dashboard: 'لوحة المتابعة',
   checklist: 'قائمة الفحص',
   calendar: 'التقويم والمواعيد',
@@ -108,6 +149,9 @@ const AR_TRANSLATIONS: Translations = {
   offline: 'وضع غير متصل (أوفلاين)',
   syncing: 'جاري المزامنة...',
   pendingSync: 'تغييرات تنتظر المزامنة',
+  cloudOnline: 'متصل',
+  cloudOffline: 'غير متصل',
+  cloudPending: 'قيد المزامنة',
   totalItems: 'إجمالي الأصناف',
   completed: 'تم الشراء',
   inComparison: 'قيد المقارنة',
@@ -157,23 +201,57 @@ const AR_TRANSLATIONS: Translations = {
   askAiDesc: 'مقارنة أفضل الماركات، الضمان، وكفاءة الطاقة',
   login: 'تسجيل الدخول',
   logout: 'تسجيل الخروج',
+  signIn: 'تسجيل الدخول',
+  signUp: 'إنشاء حساب جديد',
+  username: 'اسم المستخدم',
+  password: 'كلمة المرور',
+  fullName: 'الاسم الكامل',
+  email: 'البريد الإلكتروني',
+  sessionTimeout: 'مدة الجلسة',
+  sessionRemaining: 'متبقي من الجلسة',
+  sessionExpired: 'انتهت الجلسة، يرجى تسجيل الدخول مجدداً',
+  loginToContinue: 'سجل الدخول للوصول إلى قائمة مشترياتك ومزامنتها سحابياً',
+  quickDemoLogin: 'دخول سريع بحساب تجريبي',
+  orEnterCredentials: 'أو أدخل بيانات حسابك',
+  invalidCredentials: 'اسم المستخدم أو كلمة المرور غير صحيحة',
+  userAlreadyExists: 'اسم المستخدم أو البريد الإلكتروني مسجل مسبقاً',
+  registrationSuccess: 'تم إنشاء الحساب بنجاح وتم تسجيل دخولك',
+  selectRole: 'تحديد الصلاحية',
+  chooseAvatar: 'اختر صورة رمزية',
   switchUser: 'تبديل المستخدم',
   mfaSecured: 'مؤمن بالمصادقة الثنائية (2FA)',
   twoFactorAuth: 'المصادقة المتعددة (MFA)',
   roleAdmin: 'مدير النظام (Admin)',
-  roleEditor: 'محرر (Editor)',
+  roleEditor: 'مشرف / محرر (Editor)',
   roleViewer: 'مشاهد (Viewer)',
   notifications: 'التنبيهات والإشعارات',
   markAllRead: 'تحديد الكل كمقروء',
   noNotifications: 'لا توجد إشعارات جديدة حالياً',
   darkMode: 'الوضع الليلي',
   lightMode: 'الوضع النهاري',
-  save: 'حفظ',
+  save: 'حفظ التعديلات',
   cancel: 'إلغاء',
   confirmDelete: 'هل أنت متأكد من الحذف؟',
   backupData: 'نسخ احتياطي للبيانات',
   restoreData: 'استعادة نسخة احتياطية',
   quickDemoUsers: 'حسابات التجربة السريعة',
+  allData: 'الكل',
+  myPrivateData: 'بياناتي الخاصة',
+  publishedToAll: 'المنشور للجميع',
+  accountData: 'بيانات الحساب:',
+  importGoogleSheets: 'استيراد Google Sheets',
+  clickToChangeStatus: 'انقر لتغيير حالة الشراء',
+  privateBadge: 'خاص',
+  publishedBadge: 'منشور',
+  publishedToggleHint: 'نشر في مساحة العمل المشتركة',
+  brandAndStore: 'اكتب ماركة أو معرض أو سعر...',
+  orderExcel: 'ترتيب الإكسل (م)',
+  byPriority: 'الأولوية',
+  byName: 'الاسم',
+  byCost: 'السعر',
+  byStatus: 'الحالة',
+  allCount: 'صنف',
+  itemsUnit: 'صنف',
 };
 
 const EN_TRANSLATIONS: Translations = {
@@ -182,6 +260,8 @@ const EN_TRANSLATIONS: Translations = {
   projectTitle: 'Home Appliances Checklist (Lifetime Investment)',
   allProjects: 'Projects & Folders',
   newProject: 'New Project Folder',
+  currentProject: 'Current Project:',
+  selectProject: 'Select a project...',
   dashboard: 'Dashboard',
   checklist: 'Checklist',
   calendar: 'Calendar & Schedule',
@@ -195,6 +275,9 @@ const EN_TRANSLATIONS: Translations = {
   offline: 'Offline Mode (Local Sync)',
   syncing: 'Syncing...',
   pendingSync: 'Changes pending sync',
+  cloudOnline: 'Online',
+  cloudOffline: 'Offline',
+  cloudPending: 'Pending',
   totalItems: 'Total Items',
   completed: 'Purchased',
   inComparison: 'Under Review',
@@ -244,11 +327,28 @@ const EN_TRANSLATIONS: Translations = {
   askAiDesc: 'Compare top brands, warranties, and energy efficiency',
   login: 'Sign In',
   logout: 'Sign Out',
+  signIn: 'Sign In',
+  signUp: 'Create Account',
+  username: 'Username',
+  password: 'Password',
+  fullName: 'Full Name',
+  email: 'Email Address',
+  sessionTimeout: 'Session Timeout',
+  sessionRemaining: 'Session Remaining',
+  sessionExpired: 'Session expired, please sign in again',
+  loginToContinue: 'Sign in to access your checklist and cloud sync',
+  quickDemoLogin: 'Quick Demo Login',
+  orEnterCredentials: 'Or enter your credentials',
+  invalidCredentials: 'Invalid username or password',
+  userAlreadyExists: 'Username or email already registered',
+  registrationSuccess: 'Account created successfully and signed in',
+  selectRole: 'Select Role',
+  chooseAvatar: 'Choose Avatar',
   switchUser: 'Switch User',
   mfaSecured: 'Secured with 2FA MFA',
   twoFactorAuth: 'Multi-Factor Auth (MFA)',
   roleAdmin: 'Administrator',
-  roleEditor: 'Editor',
+  roleEditor: 'Moderator / Editor',
   roleViewer: 'Viewer (Read Only)',
   notifications: 'Notifications',
   markAllRead: 'Mark all as read',
@@ -261,6 +361,23 @@ const EN_TRANSLATIONS: Translations = {
   backupData: 'Backup Data (JSON)',
   restoreData: 'Restore Backup',
   quickDemoUsers: 'Quick Demo Accounts',
+  allData: 'All',
+  myPrivateData: 'My Private Data',
+  publishedToAll: 'Published to All',
+  accountData: 'Account Data:',
+  importGoogleSheets: 'Import Google Sheets',
+  clickToChangeStatus: 'Click to change status',
+  privateBadge: 'Private',
+  publishedBadge: 'Published',
+  publishedToggleHint: 'Publish to shared workspace',
+  brandAndStore: 'Write brand, store, or price...',
+  orderExcel: 'Excel Order (No.)',
+  byPriority: 'Priority',
+  byName: 'Name',
+  byCost: 'Cost',
+  byStatus: 'Status',
+  allCount: 'items',
+  itemsUnit: 'items',
 };
 
 @Injectable({
@@ -276,7 +393,6 @@ export class I18nService {
   isRtl = computed(() => this.currentLang() === 'ar');
 
   constructor() {
-    // Check saved language preference if in browser
     if (typeof window !== 'undefined' && window.localStorage) {
       const saved = localStorage.getItem('checkmate_lang') as Language;
       if (saved === 'ar' || saved === 'en') {

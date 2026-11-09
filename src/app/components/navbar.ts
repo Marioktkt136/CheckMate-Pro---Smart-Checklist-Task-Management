@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, output } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, output, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { I18nService } from '../services/i18n.service';
@@ -12,7 +12,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
   template: `
     <header class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors w-full">
       <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        <div class="flex items-center justify-between h-14 sm:h-16 gap-2">
+        <div class="flex items-center justify-between h-14 sm:h-16 gap-1.5 sm:gap-2">
           
           <!-- Logo & Brand (Responsive) -->
           <div class="flex items-center gap-2 shrink-0">
@@ -34,7 +34,23 @@ import { AuthService, UserProfile } from '../services/auth.service';
             </div>
           </div>
 
-          <!-- Project Selector & Cloud Status (Desktop) -->
+          <!-- Compact Mobile Project Dropdown (< 640px) -->
+          <div class="flex sm:hidden items-center gap-1 flex-1 min-w-0 max-w-[165px]">
+            <select
+              [value]="storage.activeProjectId()"
+              (change)="onMobileProjectSelect($event)"
+              [attr.aria-label]="i18n.t().allProjects"
+              class="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[11px] font-semibold text-slate-800 dark:text-slate-200 truncate focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              @for (proj of storage.projects(); track proj.id) {
+                <option [value]="proj.id">
+                  {{ i18n.isRtl() ? proj.nameAr : proj.nameEn }}
+                </option>
+              }
+            </select>
+          </div>
+
+          <!-- Project Selector & Cloud Status (Desktop >= 640px) -->
           <div class="hidden sm:flex items-center gap-2 min-w-0">
             <!-- Project Folder Selector Dropdown -->
             <div class="relative">
@@ -42,7 +58,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
                 type="button"
                 (click)="toggleProjectsMenu()"
                 class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs sm:text-sm font-medium transition cursor-pointer text-slate-800 dark:text-slate-200"
-                aria-label="Select Project Folder"
+                [attr.aria-label]="i18n.t().allProjects"
               >
                 <mat-icon class="text-blue-600 dark:text-blue-400 text-base shrink-0">folder</mat-icon>
                 <span class="max-w-[140px] md:max-w-[200px] truncate text-xs sm:text-sm font-semibold">
@@ -61,7 +77,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
                     <button
                       type="button"
                       (click)="selectProject(project.id)"
-                      class="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                      class="w-full flex items-center justify-between px-3 py-2 text-sm text-start hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                       [class.bg-blue-50]="storage.activeProjectId() === project.id"
                       [class.dark:bg-blue-950/40]="storage.activeProjectId() === project.id"
                     >
@@ -90,15 +106,39 @@ import { AuthService, UserProfile } from '../services/auth.service';
               }
             </div>
 
-            <!-- Real-Time Cloud Firestore Sync Badge -->
+            <!-- Cloud Connection Status Badge: Online / Offline / Pending (Firebase Cloud Code Hidden) -->
             <button
               type="button"
               (click)="storage.syncWithServer()"
-              [title]="'مزامنة سحابية مع Firestore: ' + storage.cloudDbId"
-              class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition cursor-pointer bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+              [title]="i18n.t().syncNow"
+              class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer"
+              [class.bg-emerald-50]="cloudState() === 'online'"
+              [class.dark:bg-emerald-950/40]="cloudState() === 'online'"
+              [class.text-emerald-700]="cloudState() === 'online'"
+              [class.dark:text-emerald-300]="cloudState() === 'online'"
+              [class.border-emerald-200]="cloudState() === 'online'"
+              [class.dark:border-emerald-800]="cloudState() === 'online'"
+              [class.bg-amber-50]="cloudState() === 'pending'"
+              [class.dark:bg-amber-950/40]="cloudState() === 'pending'"
+              [class.text-amber-700]="cloudState() === 'pending'"
+              [class.dark:text-amber-300]="cloudState() === 'pending'"
+              [class.border-amber-200]="cloudState() === 'pending'"
+              [class.dark:border-amber-800]="cloudState() === 'pending'"
+              [class.bg-rose-50]="cloudState() === 'offline'"
+              [class.dark:bg-rose-950/40]="cloudState() === 'offline'"
+              [class.text-rose-700]="cloudState() === 'offline'"
+              [class.dark:text-rose-300]="cloudState() === 'offline'"
+              [class.border-rose-200]="cloudState() === 'offline'"
+              [class.dark:border-rose-800]="cloudState() === 'offline'"
             >
-              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span class="font-mono text-[11px]">Firestore Cloud</span>
+              <span
+                class="w-2 h-2 rounded-full"
+                [class.bg-emerald-500]="cloudState() === 'online'"
+                [class.animate-pulse]="cloudState() === 'online' || cloudState() === 'pending'"
+                [class.bg-amber-500]="cloudState() === 'pending'"
+                [class.bg-rose-500]="cloudState() === 'offline'"
+              ></span>
+              <span class="text-[11px]">{{ cloudLabel() }}</span>
             </button>
           </div>
 
@@ -112,7 +152,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
                 (click)="toggleExportMenu()"
                 class="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                 aria-label="Export and Backup Menu"
-                title="تصدير ونسخ احتياطي"
+                [title]="i18n.t().backupData"
               >
                 <mat-icon class="text-xl">download</mat-icon>
               </button>
@@ -143,7 +183,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
                     class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition cursor-pointer font-medium"
                   >
                     <mat-icon class="text-emerald-600 dark:text-emerald-400 text-base">table_chart</mat-icon>
-                    <span>استيراد من Google Sheets</span>
+                    <span>{{ i18n.t().importGoogleSheets }}</span>
                   </button>
                   <div class="border-t border-slate-100 dark:border-slate-800 my-1"></div>
                   <button
@@ -152,7 +192,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
                     class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition cursor-pointer font-medium"
                   >
                     <mat-icon class="text-blue-600 dark:text-blue-400 text-base">cloud_sync</mat-icon>
-                    <span>Google Workspace &amp; Firebase</span>
+                    <span>Google Workspace &amp; Cloud</span>
                   </button>
                   <div class="border-t border-slate-100 dark:border-slate-800 my-1"></div>
                   <button
@@ -180,8 +220,8 @@ import { AuthService, UserProfile } from '../services/auth.service';
                 type="button"
                 (click)="toggleNotificationsMenu()"
                 class="relative p-1.5 sm:p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                aria-label="Notifications"
-                title="Notifications"
+                [attr.aria-label]="i18n.t().notifications"
+                [title]="i18n.t().notifications"
               >
                 <mat-icon class="text-lg sm:text-xl">notifications</mat-icon>
                 @if (storage.unreadNotificationsCount() > 0) {
@@ -268,7 +308,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
               <span class="hidden md:inline">{{ i18n.currentLang() === 'ar' ? 'English' : 'عربي' }}</span>
             </button>
 
-            <!-- User Profile & Roles Dropdown (Desktop) -->
+            <!-- User Profile & Auth Dropdown (Desktop) -->
             <div class="relative hidden sm:block">
               <button
                 type="button"
@@ -277,12 +317,13 @@ import { AuthService, UserProfile } from '../services/auth.service';
                 aria-label="User Profile"
               >
                 <span class="text-lg leading-none">{{ auth.currentUser().avatar }}</span>
-                <div class="hidden xl:block text-right">
+                <div class="hidden xl:block text-start">
                   <div class="text-xs font-bold leading-tight text-slate-900 dark:text-slate-100 max-w-[100px] truncate">
                     {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
                   </div>
-                  <div class="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                    {{ auth.currentUser().role.toUpperCase() }}
+                  <div class="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <span>{{ auth.currentUser().role.toUpperCase() }}</span>
+                    <span>• {{ auth.sessionRemainingMinutes() }}m</span>
                   </div>
                 </div>
               </button>
@@ -295,22 +336,23 @@ import { AuthService, UserProfile } from '../services/auth.service';
                       {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
                     </div>
                     <div class="text-xs text-slate-500 dark:text-slate-400 truncate">
-                      {{ auth.currentUser().email }}
+                      @{{ auth.currentUser().username }} • {{ auth.currentUser().email }}
                     </div>
-                    <div class="mt-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-                      الصلاحية: {{ auth.currentUser().role.toUpperCase() }}
+                    <div class="mt-1 flex items-center justify-between text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                      <span>{{ auth.currentUser().role.toUpperCase() }}</span>
+                      <span class="text-emerald-600 dark:text-emerald-400">{{ auth.sessionRemainingMinutes() }}m</span>
                     </div>
                   </div>
 
                   <div class="px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    تبديل سريع للمستخدم:
+                    {{ i18n.t().switchUser }}:
                   </div>
 
                   @for (user of auth.users(); track user.id) {
                     <button
                       type="button"
                       (click)="switchUser(user)"
-                      class="w-full flex items-center justify-between px-3 py-1.5 text-xs text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                      class="w-full flex items-center justify-between px-3 py-1.5 text-xs text-start hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                       [class.bg-blue-50]="auth.currentUser().id === user.id"
                       [class.dark:bg-blue-950/40]="auth.currentUser().id === user.id"
                     >
@@ -321,7 +363,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
                             {{ i18n.isRtl() ? user.name : user.nameEn }}
                           </div>
                           <div class="text-[10px] text-slate-400">
-                            {{ user.role }}
+                            @{{ user.username }} • {{ user.role }}
                           </div>
                         </div>
                       </div>
@@ -331,14 +373,14 @@ import { AuthService, UserProfile } from '../services/auth.service';
                     </button>
                   }
 
-                  <div class="border-t border-slate-100 dark:border-slate-800 mt-2 pt-1">
+                  <div class="border-t border-slate-100 dark:border-slate-800 mt-2 pt-1 space-y-1">
                     <button
                       type="button"
                       (click)="onOpenAuthModal()"
                       class="w-full flex items-center gap-2 px-3 py-2 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 font-bold cursor-pointer"
                     >
                       <mat-icon class="text-sm">manage_accounts</mat-icon>
-                      <span>إدارة المستخدمين والصلاحيات (Users &amp; Roles)</span>
+                      <span>{{ i18n.isRtl() ? 'تسجيل الدخول / إنشاء حساب / الصلاحيات' : 'Sign In / Sign Up / Manage Roles' }}</span>
                     </button>
                   </div>
                 </div>
@@ -350,7 +392,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
               type="button"
               (click)="toggleMobileMenu()"
               class="sm:hidden p-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              aria-label="القائمة الرئيسية"
+              aria-label="Menu"
             >
               <mat-icon class="text-2xl">{{ showMobileMenu() ? 'close' : 'menu' }}</mat-icon>
             </button>
@@ -364,13 +406,17 @@ import { AuthService, UserProfile } from '../services/auth.service';
       @if (showMobileMenu()) {
         <div class="sm:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-4 shadow-xl animate-in slide-in-from-top-2 duration-150">
           
-          <!-- Mobile Active User Info -->
+          <!-- Mobile Active User Info & Session Timer -->
           <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
             <div class="flex items-center gap-2.5">
               <span class="text-2xl p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-xs">{{ auth.currentUser().avatar }}</span>
               <div>
-                <div class="font-bold text-xs text-slate-900 dark:text-slate-100">{{ auth.currentUser().name }}</div>
-                <div class="text-[10px] text-slate-400">{{ auth.currentUser().email }}</div>
+                <div class="font-bold text-xs text-slate-900 dark:text-slate-100">
+                  {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
+                </div>
+                <div class="text-[10px] text-slate-400">
+                  @{{ auth.currentUser().username }} • {{ auth.sessionRemainingMinutes() }}m
+                </div>
               </div>
             </div>
             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
@@ -378,53 +424,70 @@ import { AuthService, UserProfile } from '../services/auth.service';
             </span>
           </div>
 
-          <!-- Mobile Project Switcher -->
+          <!-- Mobile Projects & Folders Dropdown Menu -->
           <div>
-            <div class="text-xs font-semibold text-slate-500 mb-1.5">المشروع الحالي:</div>
-            <div class="grid grid-cols-1 gap-1.5">
-              @for (proj of storage.projects(); track proj.id) {
-                <button
-                  type="button"
-                  (click)="selectProject(proj.id); showMobileMenu.set(false)"
-                  class="flex items-center justify-between p-2 rounded-lg text-xs font-medium border text-right transition cursor-pointer"
-                  [class.bg-blue-50]="storage.activeProjectId() === proj.id"
-                  [class.border-blue-300]="storage.activeProjectId() === proj.id"
-                  [class.text-blue-700]="storage.activeProjectId() === proj.id"
-                  [class.dark:bg-blue-950/40]="storage.activeProjectId() === proj.id"
-                  [class.dark:border-blue-800]="storage.activeProjectId() === proj.id"
-                  [class.dark:text-blue-300]="storage.activeProjectId() === proj.id"
-                  [class.bg-white]="storage.activeProjectId() !== proj.id"
-                  [class.dark:bg-slate-800]="storage.activeProjectId() !== proj.id"
-                  [class.border-slate-200]="storage.activeProjectId() !== proj.id"
-                  [class.dark:border-slate-700]="storage.activeProjectId() !== proj.id"
-                >
-                  <div class="flex items-center gap-2">
-                    <mat-icon class="text-base" [style.color]="proj.color">{{ proj.icon }}</mat-icon>
-                    <span>{{ i18n.isRtl() ? proj.nameAr : proj.nameEn }}</span>
-                  </div>
-                  @if (storage.activeProjectId() === proj.id) {
-                    <mat-icon class="text-sm">check</mat-icon>
-                  }
-                </button>
-              }
+            <label for="mobile-project-select" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
+              {{ i18n.t().allProjects }}:
+            </label>
+            <div class="flex items-center gap-2">
+              <select
+                id="mobile-project-select"
+                [value]="storage.activeProjectId()"
+                (change)="onMobileProjectSelect($event)"
+                class="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              >
+                @for (proj of storage.projects(); track proj.id) {
+                  <option [value]="proj.id">
+                    {{ i18n.isRtl() ? proj.nameAr : proj.nameEn }}
+                  </option>
+                }
+              </select>
+              <button
+                type="button"
+                (click)="onOpenNewProjectModal(); showMobileMenu.set(false)"
+                class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                [title]="i18n.t().newProject"
+              >
+                <mat-icon class="!text-sm !w-4 !h-4">add</mat-icon>
+                <span>{{ i18n.isRtl() ? 'جديد' : 'New' }}</span>
+              </button>
             </div>
           </div>
 
-          <!-- Mobile Cloud Status Indicator -->
-          <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+          <!-- Mobile Cloud Status Indicator (Online / Offline / Pending — No Cloud Code) -->
+          <div
+            class="p-3 rounded-xl border text-xs flex items-center justify-between"
+            [class.bg-emerald-50]="cloudState() === 'online'"
+            [class.dark:bg-emerald-950/30]="cloudState() === 'online'"
+            [class.border-emerald-200]="cloudState() === 'online'"
+            [class.dark:border-emerald-800]="cloudState() === 'online'"
+            [class.text-emerald-800]="cloudState() === 'online'"
+            [class.dark:text-emerald-300]="cloudState() === 'online'"
+            [class.bg-amber-50]="cloudState() === 'pending'"
+            [class.dark:bg-amber-950/30]="cloudState() === 'pending'"
+            [class.border-amber-200]="cloudState() === 'pending'"
+            [class.text-amber-800]="cloudState() === 'pending'"
+            [class.bg-rose-50]="cloudState() === 'offline'"
+            [class.dark:bg-rose-950/30]="cloudState() === 'offline'"
+            [class.border-rose-200]="cloudState() === 'offline'"
+            [class.text-rose-800]="cloudState() === 'offline'"
+          >
             <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <div>
-                <div class="font-bold text-[11px]">قاعدة بيانات Firestore متزامنة</div>
-                <div class="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono">gen-lang-client-0495942485</div>
-              </div>
+              <span
+                class="w-2.5 h-2.5 rounded-full"
+                [class.bg-emerald-500]="cloudState() === 'online'"
+                [class.animate-pulse]="cloudState() === 'online' || cloudState() === 'pending'"
+                [class.bg-amber-500]="cloudState() === 'pending'"
+                [class.bg-rose-500]="cloudState() === 'offline'"
+              ></span>
+              <span class="font-bold text-xs">{{ cloudLabel() }}</span>
             </div>
             <button
               type="button"
               (click)="storage.syncWithServer()"
-              class="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold cursor-pointer"
+              class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold cursor-pointer"
             >
-              مزامنة الآن
+              {{ i18n.t().syncNow }}
             </button>
           </div>
 
@@ -436,7 +499,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
               class="p-2.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <mat-icon class="text-base">manage_accounts</mat-icon>
-              <span>إدارة المستخدمين</span>
+              <span>{{ i18n.isRtl() ? 'الحسابات والدخول' : 'Sign In & Accounts' }}</span>
             </button>
 
             <button
@@ -454,7 +517,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
               class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 text-slate-700 dark:text-slate-200 cursor-pointer"
             >
               <mat-icon class="text-rose-500 text-base">picture_as_pdf</mat-icon>
-              <span>PDF تقرير</span>
+              <span>{{ i18n.t().exportPdf }}</span>
             </button>
 
             <button
@@ -463,7 +526,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
               class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 text-slate-700 dark:text-slate-200 cursor-pointer"
             >
               <mat-icon class="text-emerald-500 text-base">table_view</mat-icon>
-              <span>Excel (CSV)</span>
+              <span>{{ i18n.t().exportCsv }}</span>
             </button>
 
             <button
@@ -472,7 +535,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
               class="col-span-2 p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <mat-icon class="text-emerald-600 dark:text-emerald-400 text-base">table_chart</mat-icon>
-              <span>استيراد جدول Google Sheets (مخطط الأعمدة)</span>
+              <span>{{ i18n.t().importGoogleSheets }}</span>
             </button>
           </div>
 
@@ -498,6 +561,19 @@ export class NavbarComponent {
   openGoogleSheetImport = output<void>();
   triggerPdfExport = output<void>();
   triggerCsvExport = output<void>();
+
+  cloudState = computed<'online' | 'pending' | 'offline'>(() => {
+    if (!this.storage.isOnline()) return 'offline';
+    if (this.storage.isSyncing() || this.storage.hasPendingSync()) return 'pending';
+    return 'online';
+  });
+
+  cloudLabel = computed<string>(() => {
+    const state = this.cloudState();
+    if (state === 'offline') return this.i18n.t().cloudOffline;
+    if (state === 'pending') return this.i18n.t().cloudPending;
+    return this.i18n.t().cloudOnline;
+  });
 
   toggleProjectsMenu() {
     this.showProjectsMenu.update(v => !v);
@@ -540,8 +616,17 @@ export class NavbarComponent {
     this.showProjectsMenu.set(false);
   }
 
+  onMobileProjectSelect(event: Event) {
+    const id = (event.target as HTMLSelectElement).value;
+    if (id) {
+      this.storage.activeProjectId.set(id);
+      this.showMobileMenu.set(false);
+    }
+  }
+
   switchUser(user: UserProfile) {
     this.auth.loginAs(user);
+    this.storage.dataScope.set('mine');
     this.showUserMenu.set(false);
     this.storage.addNotification({
       title: 'تم تبديل المستخدم',
@@ -597,12 +682,7 @@ export class NavbarComponent {
       reader.onload = (e) => {
         const content = e.target?.result as string;
         if (content) {
-          const ok = this.storage.restoreFromJson(content);
-          if (ok) {
-            alert(this.i18n.currentLang() === 'ar' ? 'تمت استعادة البيانات بنجاح!' : 'Data restored successfully!');
-          } else {
-            alert(this.i18n.currentLang() === 'ar' ? 'فشل استيراد الملف' : 'Failed to import backup file');
-          }
+          this.storage.restoreFromJson(content);
         }
       };
       reader.readAsText(file);

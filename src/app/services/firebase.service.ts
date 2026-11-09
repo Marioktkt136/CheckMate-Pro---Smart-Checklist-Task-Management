@@ -60,15 +60,17 @@ export class FirebaseService {
   constructor() {
     WORKSPACE_SCOPES.forEach(scope => this.googleProvider.addScope(scope));
 
-    // Listen to Auth State
-    onAuthStateChanged(this.auth, (user) => {
-      this.currentUser.set(user);
-      if (!user) {
-        this.userToken.set(null);
-      }
-    });
+    if (typeof window !== 'undefined') {
+      // Listen to Auth State in browser only
+      onAuthStateChanged(this.auth, (user) => {
+        this.currentUser.set(user);
+        if (!user) {
+          this.userToken.set(null);
+        }
+      });
 
-    this.testFirestoreConnection();
+      this.testFirestoreConnection();
+    }
   }
 
   private async testFirestoreConnection(): Promise<void> {

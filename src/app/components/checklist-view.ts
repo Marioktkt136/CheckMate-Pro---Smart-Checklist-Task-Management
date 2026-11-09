@@ -1,16 +1,23 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { I18nService } from '../services/i18n.service';
 import { StorageService } from '../services/storage.service';
 import { AuthService } from '../services/auth.service';
 import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl } from '../core/checklist-rules';
 
+const CATEGORY_EN_MAP: Record<string, string> = {
+  'الأجهزة الأساسية': 'Essential Appliances',
+  'أجهزة المطبخ': 'Kitchen Appliances',
+  'أجهزة التنظيف والكي': 'Cleaning & Ironing',
+  'الرفاهية المطبخية': 'Kitchen Luxury',
+  'عام': 'General',
+};
+
 @Component({
   selector: 'app-checklist-view',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, MatIconModule],
   template: `
     <div class="space-y-4">
       
@@ -26,8 +33,8 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                       [class.right-3]="i18n.isRtl()" [class.left-3]="!i18n.isRtl()">search</mat-icon>
             <input
               type="text"
-              [ngModel]="searchQuery()"
-              (ngModelChange)="searchQuery.set($event)"
+              [value]="searchQuery()"
+              (input)="onSearchInput($event)"
               [placeholder]="i18n.t().searchPlaceholder"
               class="w-full py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               [class.pr-9]="i18n.isRtl()" [class.pl-4]="i18n.isRtl()"
@@ -45,8 +52,8 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
             }
           </div>
 
-          <!-- Actions: Add Item & AI Advisor -->
-          <div class="flex items-center gap-2 shrink-0">
+          <!-- Actions: Add Item, Google Sheets & AI Advisor -->
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
             @if (auth.isEditor()) {
               <button
                 type="button"
@@ -62,10 +69,10 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
               type="button"
               (click)="openGoogleSheetImport.emit()"
               class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-xs sm:text-sm font-semibold transition cursor-pointer"
-              title="استيراد وتصدير Google Sheets مع شرح الأعمدة والصفوف"
+              [title]="i18n.t().importGoogleSheets"
             >
               <mat-icon class="text-base text-emerald-600 dark:text-emerald-400">table_chart</mat-icon>
-              <span>استيراد Google Sheets</span>
+              <span>{{ i18n.t().importGoogleSheets }}</span>
             </button>
 
             <button
@@ -83,8 +90,10 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
         <div class="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
           <div class="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
             <mat-icon class="!text-sm !w-4 !h-4 text-blue-600">badge</mat-icon>
-            <span>بيانات الحساب:</span>
-            <span class="text-blue-600 dark:text-blue-400 font-extrabold">{{ auth.currentUser().name }}</span>
+            <span>{{ i18n.t().accountData }}</span>
+            <span class="text-blue-600 dark:text-blue-400 font-extrabold">
+              {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
+            </span>
           </div>
 
           <div class="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -97,7 +106,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
               [class.text-slate-600]="storage.dataScope() !== 'all'"
               [class.dark:text-slate-400]="storage.dataScope() !== 'all'"
             >
-              الكل
+              {{ i18n.t().allData }}
             </button>
             <button
               type="button"
@@ -108,7 +117,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
               [class.text-slate-600]="storage.dataScope() !== 'mine'"
               [class.dark:text-slate-400]="storage.dataScope() !== 'mine'"
             >
-              بياناتي الخاصة ({{ storage.userItemsCount() }})
+              {{ i18n.t().myPrivateData }} ({{ storage.userItemsCount() }})
             </button>
             <button
               type="button"
@@ -119,7 +128,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
               [class.text-slate-600]="storage.dataScope() !== 'published'"
               [class.dark:text-slate-400]="storage.dataScope() !== 'published'"
             >
-              المنشور للجميع ({{ storage.publishedItemsCount() }})
+              {{ i18n.t().publishedToAll }} ({{ storage.publishedItemsCount() }})
             </button>
           </div>
         </div>
@@ -129,10 +138,10 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
           <div class="flex items-center justify-between mb-1.5">
             <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
               <mat-icon class="!text-xs !w-3.5 !h-3.5">category</mat-icon>
-              <span>تصنيف المشتريات (Categories):</span>
+              <span>{{ i18n.t().filterCategory }}:</span>
             </span>
             <span class="text-[10px] text-slate-400 font-mono">
-              {{ storage.currentProjectItems().length }} صنف
+              {{ storage.currentProjectItems().length }} {{ i18n.t().itemsUnit }}
             </span>
           </div>
 
@@ -152,7 +161,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
               [class.text-slate-700]="selectedCategory() !== 'all'"
               [class.dark:text-slate-200]="selectedCategory() !== 'all'"
             >
-              <span>الكل (All)</span>
+              <span>{{ i18n.t().allCategories }}</span>
               <span class="text-[10px] px-1.5 py-0.2 rounded-full"
                     [class.bg-blue-700]="selectedCategory() === 'all'"
                     [class.text-white]="selectedCategory() === 'all'"
@@ -179,7 +188,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                 [class.text-slate-700]="selectedCategory() !== cat"
                 [class.dark:text-slate-200]="selectedCategory() !== cat"
               >
-                <span>{{ cat }}</span>
+                <span>{{ displayCategory(cat) }}</span>
                 <span class="text-[10px] px-1.5 py-0.2 rounded-full"
                       [class.bg-blue-700]="selectedCategory() === cat"
                       [class.text-white]="selectedCategory() === cat"
@@ -200,8 +209,8 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
           <div class="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
             <mat-icon class="text-slate-400 text-sm">filter_alt</mat-icon>
             <select
-              [ngModel]="selectedStatus()"
-              (ngModelChange)="selectedStatus.set($event)"
+              [value]="selectedStatus()"
+              (change)="onStatusFilterChange($event)"
               class="bg-transparent text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
             >
               <option value="all">{{ i18n.t().allStatuses }}</option>
@@ -216,8 +225,8 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
           <div class="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
             <mat-icon class="text-slate-400 text-sm">flag</mat-icon>
             <select
-              [ngModel]="selectedPriority()"
-              (ngModelChange)="selectedPriority.set($event)"
+              [value]="selectedPriority()"
+              (change)="onPriorityFilterChange($event)"
               class="bg-transparent text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
             >
               <option value="all">{{ i18n.t().allPriorities }}</option>
@@ -232,15 +241,15 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
           <div class="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 ms-auto">
             <mat-icon class="text-slate-400 text-sm">sort</mat-icon>
             <select
-              [ngModel]="sortBy()"
-              (ngModelChange)="sortBy.set($event)"
+              [value]="sortBy()"
+              (change)="onSortChange($event)"
               class="bg-transparent text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
             >
-              <option value="number">ترتيب الإكسل (م)</option>
-              <option value="priority">الأولوية</option>
-              <option value="title">الاسم</option>
-              <option value="cost">السعر</option>
-              <option value="status">الحالة</option>
+              <option value="number">{{ i18n.t().orderExcel }}</option>
+              <option value="priority">{{ i18n.t().byPriority }}</option>
+              <option value="title">{{ i18n.t().byName }}</option>
+              <option value="cost">{{ i18n.t().byCost }}</option>
+              <option value="status">{{ i18n.t().byStatus }}</option>
             </select>
           </div>
 
@@ -266,7 +275,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
               <h2 class="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100">
-                {{ group.category }}
+                {{ displayCategory(group.category) }}
               </h2>
               <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                 {{ group.items.length }}
@@ -303,10 +312,10 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                     </button>
                     <div>
                       <div class="font-bold text-sm text-slate-900 dark:text-slate-100">
-                        {{ i18n.isRtl() ? item.titleAr : item.titleEn }}
+                        {{ i18n.isRtl() ? item.titleAr : (item.titleEn || item.titleAr) }}
                       </div>
                       <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5">
-                        <span>رقم: #{{ item.itemNumber }} • {{ item.category }}</span>
+                        <span>#{{ item.itemNumber }} • {{ displayCategory(item.category) }}</span>
                         <button
                           type="button"
                           (click)="storage.togglePublishItem(item.id)"
@@ -318,10 +327,10 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                           [class.bg-slate-100]="!item.isPublished"
                           [class.text-slate-600]="!item.isPublished"
                           [class.dark:bg-slate-800]="!item.isPublished"
-                          [title]="item.isPublished ? 'صنف منشور للجميع (انقر للتحويل إلى خاص)' : 'صنف خاص بك (انقر لنشره)'"
+                          [title]="i18n.t().publishedToggleHint"
                         >
                           <mat-icon class="!text-[10px] !w-2.5 !h-2.5">{{ item.isPublished ? 'public' : 'lock' }}</mat-icon>
-                          <span>{{ item.isPublished ? 'منشور' : 'خاص' }}</span>
+                          <span>{{ item.isPublished ? i18n.t().publishedBadge : i18n.t().privateBadge }}</span>
                         </button>
                       </div>
                     </div>
@@ -351,14 +360,14 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                 <!-- Mobile Yellow MyNotes Input -->
                 <div>
                   <span class="block text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-0.5">
-                    ملاحظاتي الخاصة (الماركة / المعرض):
+                    {{ i18n.t().myNotes }}:
                   </span>
                   <input
                     type="text"
-                    [ngModel]="item.myNotes"
-                    (ngModelChange)="onUpdateMyNotes(item, $event)"
+                    [value]="item.myNotes"
+                    (change)="onUpdateMyNotesEvent(item, $event)"
                     [disabled]="!auth.isEditor()"
-                    placeholder="اكتب ماركة أو معرض أو سعر..."
+                    [placeholder]="i18n.t().brandAndStore"
                     class="w-full text-xs px-2.5 py-1.5 rounded-lg border-2 border-amber-300 dark:border-amber-600/70 bg-amber-50/70 dark:bg-amber-950/20 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500 font-medium"
                   />
                 </div>
@@ -367,8 +376,8 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                 <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
                   <!-- Status dropdown -->
                   <select
-                    [ngModel]="item.status"
-                    (ngModelChange)="onSelectStatus(item.id, $event)"
+                    [value]="item.status"
+                    (change)="onSelectStatusEvent(item.id, $event)"
                     [disabled]="!auth.isEditor()"
                     class="text-xs font-bold px-2 py-1 rounded-lg border cursor-pointer focus:outline-none"
                     [class.bg-emerald-100]="item.status === 'purchased'"
@@ -380,10 +389,10 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                     [class.bg-slate-100]="item.status === 'pending'"
                     [class.text-slate-700]="item.status === 'pending'"
                   >
-                    <option value="pending">⬜ لسه (Pending)</option>
-                    <option value="comparing">⏳ مقارنة</option>
-                    <option value="purchased">✅ تم الشراء</option>
-                    <option value="delivered">🚚 تم التوصيل</option>
+                    <option value="pending">{{ i18n.t().statusPending }}</option>
+                    <option value="comparing">{{ i18n.t().statusComparing }}</option>
+                    <option value="purchased">{{ i18n.t().statusPurchased }}</option>
+                    <option value="delivered">{{ i18n.t().statusDelivered }}</option>
                   </select>
 
                   <!-- Cost -->
@@ -398,7 +407,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                       type="button"
                       (click)="consultAiTrigger.emit(item)"
                       class="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40"
-                      title="استشارة الذكاء الاصطناعي"
+                      [title]="i18n.t().askAi"
                     >
                       <mat-icon class="text-base">auto_awesome</mat-icon>
                     </button>
@@ -406,6 +415,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                       type="button"
                       (click)="openCommentsTrigger.emit(item)"
                       class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      [title]="i18n.t().comments"
                     >
                       <mat-icon class="text-base">chat_bubble_outline</mat-icon>
                     </button>
@@ -414,6 +424,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                         type="button"
                         (click)="editItemTrigger.emit(item)"
                         class="p-1 rounded text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        [title]="i18n.t().editItem"
                       >
                         <mat-icon class="text-base">edit</mat-icon>
                       </button>
@@ -423,6 +434,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                         type="button"
                         (click)="onDeleteItem(item.id)"
                         class="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                        [title]="i18n.t().deleteItem"
                       >
                         <mat-icon class="text-base">delete_outline</mat-icon>
                       </button>
@@ -436,7 +448,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
 
           <!-- 2. Desktop Table View (>= 768px) -->
           <div class="hidden md:block overflow-x-auto">
-            <table class="w-full text-sm text-right rtl:text-right ltr:text-left">
+            <table class="w-full text-sm text-start">
               <thead class="text-xs uppercase bg-slate-100/70 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th class="py-3 px-3 w-10 text-center">{{ i18n.t().itemNo }}</th>
@@ -472,7 +484,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                           [class.border]="item.status !== 'purchased' && item.status !== 'delivered'"
                           [class.border-slate-300]="item.status !== 'purchased' && item.status !== 'delivered'"
                           [class.dark:border-slate-600]="item.status !== 'purchased' && item.status !== 'delivered'"
-                          title="انقر لتغيير حالة الشراء"
+                          [title]="i18n.t().clickToChangeStatus"
                         >
                           @if (item.status === 'purchased' || item.status === 'delivered') {
                             <mat-icon class="text-sm">check</mat-icon>
@@ -480,7 +492,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                         </button>
                         <div>
                           <div class="font-bold text-slate-900 dark:text-slate-100">
-                            {{ i18n.isRtl() ? item.titleAr : item.titleEn }}
+                            {{ i18n.isRtl() ? item.titleAr : (item.titleEn || item.titleAr) }}
                           </div>
                           <div class="flex items-center gap-1.5 flex-wrap mt-1">
                             <button
@@ -495,10 +507,10 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                               [class.text-slate-600]="!item.isPublished"
                               [class.dark:bg-slate-800]="!item.isPublished"
                               [class.dark:text-slate-400]="!item.isPublished"
-                              [title]="item.isPublished ? 'منشور للجميع في مساحة العمل (انقر لجعله خاصاً)' : 'خاص بحسابك فقط (انقر لنشره)'"
+                              [title]="i18n.t().publishedToggleHint"
                             >
                               <mat-icon class="!text-[10px] !w-2.5 !h-2.5">{{ item.isPublished ? 'public' : 'lock' }}</mat-icon>
-                              <span>{{ item.isPublished ? 'منشور' : 'خاص' }}</span>
+                              <span>{{ item.isPublished ? i18n.t().publishedBadge : i18n.t().privateBadge }}</span>
                             </button>
 
                             @if (item.tags && item.tags.length > 0) {
@@ -513,7 +525,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                       </div>
                     </td>
 
-                    <!-- 3. Spec Notes (ملاحظات الشيت الأصلية) -->
+                    <!-- 3. Spec Notes -->
                     <td class="py-3.5 px-4 text-xs text-slate-600 dark:text-slate-300">
                       @if (item.notes) {
                         <span class="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 px-2 py-1 rounded text-slate-700 dark:text-slate-300 font-medium">
@@ -525,25 +537,25 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                       }
                     </td>
 
-                    <!-- 4. My Notes (ملاحظاتي - الخلايا الصفراء الأصلية في الشيت للتعبئة) -->
+                    <!-- 4. My Notes -->
                     <td class="py-3.5 px-4">
                       <div class="relative">
                         <input
                           type="text"
-                          [ngModel]="item.myNotes"
-                          (ngModelChange)="onUpdateMyNotes(item, $event)"
+                          [value]="item.myNotes"
+                          (change)="onUpdateMyNotesEvent(item, $event)"
                           [disabled]="!auth.isEditor()"
-                          placeholder="اكتب ماركة أو معرض أو سعر..."
+                          [placeholder]="i18n.t().brandAndStore"
                           class="w-full text-xs px-2.5 py-1.5 rounded-lg border-2 border-amber-300 dark:border-amber-600/70 bg-amber-50/70 dark:bg-amber-950/20 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500 font-medium placeholder:text-amber-400 dark:placeholder:text-amber-600/60 transition"
                         />
                       </div>
                     </td>
 
-                    <!-- 5. Status Dropdown (تم الشراء؟) -->
+                    <!-- 5. Status Dropdown -->
                     <td class="py-3.5 px-3 text-center">
                       <select
-                        [ngModel]="item.status"
-                        (ngModelChange)="onSelectStatus(item.id, $event)"
+                        [value]="item.status"
+                        (change)="onSelectStatusEvent(item.id, $event)"
                         [disabled]="!auth.isEditor()"
                         class="text-xs font-bold px-2 py-1 rounded-lg border cursor-pointer focus:outline-none transition"
                         [class.bg-emerald-100]="item.status === 'purchased'"
@@ -564,10 +576,10 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                         [class.dark:bg-slate-800]="item.status === 'pending'"
                         [class.dark:text-slate-300]="item.status === 'pending'"
                       >
-                        <option value="pending">⬜ لسه (Pending)</option>
-                        <option value="comparing">⏳ قيد المقارنة</option>
-                        <option value="purchased">✅ تم الشراء</option>
-                        <option value="delivered">🚚 تم التوصيل</option>
+                        <option value="pending">{{ i18n.t().statusPending }}</option>
+                        <option value="comparing">{{ i18n.t().statusComparing }}</option>
+                        <option value="purchased">{{ i18n.t().statusPurchased }}</option>
+                        <option value="delivered">{{ i18n.t().statusDelivered }}</option>
                       </select>
                     </td>
 
@@ -616,7 +628,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                           type="button"
                           (click)="consultAiTrigger.emit(item)"
                           class="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition cursor-pointer"
-                          title="استشارة الذكاء الاصطناعي لمقارنة الماركات"
+                          [title]="i18n.t().askAi"
                         >
                           <mat-icon class="text-base">auto_awesome</mat-icon>
                         </button>
@@ -627,7 +639,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                           target="_blank"
                           rel="noopener noreferrer"
                           class="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition"
-                          title="إضافة لتقويم جوجل"
+                          [title]="i18n.t().addToGoogleCalendar"
                         >
                           <mat-icon class="text-base">today</mat-icon>
                         </a>
@@ -637,7 +649,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                           type="button"
                           (click)="openCommentsTrigger.emit(item)"
                           class="relative p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                          title="المناقشة والتعليقات"
+                          [title]="i18n.t().comments"
                         >
                           <mat-icon class="text-base">chat_bubble_outline</mat-icon>
                           @if (item.comments && item.comments.length > 0) {
@@ -652,7 +664,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                           type="button"
                           (click)="openAttachmentsTrigger.emit(item)"
                           class="relative p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                          title="المرفقات والفواتير"
+                          [title]="i18n.t().attachments"
                         >
                           <mat-icon class="text-base">attach_file</mat-icon>
                           @if (item.attachments && item.attachments.length > 0) {
@@ -668,7 +680,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                             type="button"
                             (click)="editItemTrigger.emit(item)"
                             class="p-1 rounded text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                            title="تعديل التفاصيل"
+                            [title]="i18n.t().editItem"
                           >
                             <mat-icon class="text-base">edit</mat-icon>
                           </button>
@@ -680,7 +692,7 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
                             type="button"
                             (click)="onDeleteItem(item.id)"
                             class="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
-                            title="حذف"
+                            [title]="i18n.t().deleteItem"
                           >
                             <mat-icon class="text-base">delete_outline</mat-icon>
                           </button>
@@ -699,8 +711,12 @@ import { ChecklistItem, ItemStatus, filterAndSortItems, createGoogleCalendarUrl 
       } @empty {
         <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
           <mat-icon class="text-slate-300 dark:text-slate-600 text-5xl">search_off</mat-icon>
-          <h3 class="mt-2 text-base font-bold text-slate-800 dark:text-slate-200">لا توجد نتائج مطابقة لبحثك</h3>
-          <p class="text-xs text-slate-400 mt-1">جرب تغيير شروط التصفية أو مسح كلمة البحث.</p>
+          <h3 class="mt-2 text-base font-bold text-slate-800 dark:text-slate-200">
+            {{ i18n.isRtl() ? 'لا توجد أصناف في هذا النطاق حالياً' : 'No items found in this view' }}
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">
+            {{ i18n.isRtl() ? 'أضف صنفاً جديداً لحسابك أو قم باستيراد جدول Google Sheets.' : 'Add a new item to your account or import a Google Sheet.' }}
+          </p>
         </div>
       }
 
@@ -732,6 +748,11 @@ export class ChecklistViewComponent {
     }
     return Array.from(set);
   });
+
+  displayCategory(cat: string): string {
+    if (this.i18n.isRtl()) return cat;
+    return CATEGORY_EN_MAP[cat] || cat;
+  }
 
   getCategoryCount(category: string): number {
     return this.storage.currentProjectItems().filter(it => it.category === category).length;
@@ -773,17 +794,36 @@ export class ChecklistViewComponent {
     return result;
   });
 
+  onSearchInput(event: Event) {
+    this.searchQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  onStatusFilterChange(event: Event) {
+    this.selectedStatus.set((event.target as HTMLSelectElement).value);
+  }
+
+  onPriorityFilterChange(event: Event) {
+    this.selectedPriority.set((event.target as HTMLSelectElement).value);
+  }
+
+  onSortChange(event: Event) {
+    const val = (event.target as HTMLSelectElement).value as 'number' | 'title' | 'priority' | 'cost' | 'status';
+    this.sortBy.set(val);
+  }
+
   onToggleStatus(id: string) {
     if (!this.auth.isEditor()) return;
     this.storage.toggleItemStatus(id);
   }
 
-  onSelectStatus(id: string, status: ItemStatus) {
+  onSelectStatusEvent(id: string, event: Event) {
     if (!this.auth.isEditor()) return;
+    const status = (event.target as HTMLSelectElement).value as ItemStatus;
     this.storage.toggleItemStatus(id, status);
   }
 
-  onUpdateMyNotes(item: ChecklistItem, notes: string) {
+  onUpdateMyNotesEvent(item: ChecklistItem, event: Event) {
+    const notes = (event.target as HTMLInputElement).value;
     this.storage.updateItem({
       ...item,
       myNotes: notes,
@@ -791,9 +831,7 @@ export class ChecklistViewComponent {
   }
 
   onDeleteItem(id: string) {
-    if (confirm(this.i18n.t().confirmDelete)) {
-      this.storage.deleteItem(id);
-    }
+    this.storage.deleteItem(id);
   }
 
   getGoogleCalendarUrl(item: ChecklistItem): string {

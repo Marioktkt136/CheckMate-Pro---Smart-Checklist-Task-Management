@@ -415,6 +415,12 @@ export class StorageService {
     return this.projects().find(p => p.id === this.activeProjectId()) || this.projects()[0];
   });
 
+  private getItemOwnerId(it: ChecklistItem): string {
+    if (it.ownerId) return it.ownerId;
+    if (it.assignee?.email === 'sara@example.com') return 'u2';
+    return 'u1';
+  }
+
   /**
    * Account-Separated items computed signal
    */
@@ -425,25 +431,24 @@ export class StorageService {
     const all = this.items().filter(item => item.folderId === activeId);
 
     if (scope === 'mine') {
-      return all.filter(it => it.ownerId === currentUserId);
+      return all.filter(it => this.getItemOwnerId(it) === currentUserId);
     }
     if (scope === 'published') {
       return all.filter(it => it.isPublished === true);
     }
-    // 'all': Show current user's items + any published items, or full list for Admin
-    if (this.auth.isAdmin()) {
-      return all;
-    }
-    return all.filter(it => it.ownerId === currentUserId || it.isPublished !== false);
+    // 'all': Show current user's own items + explicitly published shared items
+    return all.filter(it => this.getItemOwnerId(it) === currentUserId || it.isPublished === true);
   });
 
   userItemsCount = computed(() => {
+    const activeId = this.activeProjectId();
     const currentUserId = this.auth.currentUser().id;
-    return this.items().filter(it => it.ownerId === currentUserId).length;
+    return this.items().filter(it => it.folderId === activeId && this.getItemOwnerId(it) === currentUserId).length;
   });
 
   publishedItemsCount = computed(() => {
-    return this.items().filter(it => it.isPublished === true).length;
+    const activeId = this.activeProjectId();
+    return this.items().filter(it => it.folderId === activeId && it.isPublished === true).length;
   });
 
   constructor() {
