@@ -4,6 +4,10 @@ import {
   getAuth,
   signInWithPopup,
   GoogleAuthProvider,
+  FacebookAuthProvider,
+  OAuthProvider,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
   User
@@ -24,10 +28,13 @@ export interface CloudUserRecord {
   id: string;
   name: string;
   nameEn?: string;
+  username?: string;
   email: string;
+  password?: string;
   role: string;
   avatar?: string;
   department?: string;
+  provider?: 'email' | 'google' | 'facebook' | 'apple';
 }
 
 const WORKSPACE_SCOPES = [
@@ -56,9 +63,14 @@ export class FirebaseService {
   readonly isConnectedToFirestore = signal<boolean>(false);
 
   private readonly googleProvider = new GoogleAuthProvider();
+  private readonly facebookProvider = new FacebookAuthProvider();
+  private readonly appleProvider = new OAuthProvider('apple.com');
 
   constructor() {
     WORKSPACE_SCOPES.forEach(scope => this.googleProvider.addScope(scope));
+    this.facebookProvider.addScope('email');
+    this.appleProvider.addScope('email');
+    this.appleProvider.addScope('name');
 
     if (typeof window !== 'undefined') {
       // Listen to Auth State in browser only
@@ -95,15 +107,67 @@ export class FirebaseService {
       this.currentUser.set(result.user);
       return token;
     } catch (err) {
-      console.error('Google Sign-In failed:', err);
+      console.warn('Google Sign-In popup note:', err);
       throw err;
     } finally {
       this.isAuthenticating.set(false);
     }
   }
 
+  async signInWithFacebook(): Promise<User> {
+    this.isAuthenticating.set(true);
+    try {
+      const result = await signInWithPopup(this.auth, this.facebookProvider);
+      this.currentUser.set(result.user);
+      return result.user;
+    } catch (err) {
+      console.warn('Facebook Sign-In popup note:', err);
+      throw err;
+    } finally {
+      this.isAuthenticating.set(false);
+    }
+  }
+
+  async signInWithApple(): Promise<User> {
+    this.isAuthenticating.set(true);
+    try {
+      const result = await signInWithPopup(this.auth, this.appleProvider);
+      this.currentUser.set(result.user);
+      return result.user;
+    } catch (err) {
+      console.warn('Apple Sign-In popup note:', err);
+      throw err;
+    } finally {
+      this.isAuthenticating.set(false);
+    }
+  }
+
+  async signInWithEmail(email: string, pass: string): Promise<User | null> {
+    try {
+      const result = await signInWithEmailAndPassword(this.auth, email, pass);
+      this.currentUser.set(result.user);
+      return result.user;
+    } catch {
+      return null;
+    }
+  }
+
+  async createWithEmail(email: string, pass: string): Promise<User | null> {
+    try {
+      const result = await createUserWithEmailAndPassword(this.auth, email, pass);
+      this.currentUser.set(result.user);
+      return result.user;
+    } catch {
+      return null;
+    }
+  }
+
   async signOut(): Promise<void> {
-    await signOut(this.auth);
+    try {
+      await signOut(this.auth);
+    } catch {
+      // Ignore if not signed into Firebase Auth
+    }
     this.currentUser.set(null);
     this.userToken.set(null);
   }

@@ -126,6 +126,15 @@ export interface Translations {
   byStatus: string;
   allCount: string;
   itemsUnit: string;
+  continueWithGoogle: string;
+  continueWithFacebook: string;
+  continueWithApple: string;
+  orWithEmailPassword: string;
+  signedOutBanner: string;
+  enterEmail: string;
+  enterPassword: string;
+  dontHaveAccount: string;
+  alreadyHaveAccount: string;
 }
 
 const AR_TRANSLATIONS: Translations = {
@@ -252,6 +261,15 @@ const AR_TRANSLATIONS: Translations = {
   byStatus: 'الحالة',
   allCount: 'صنف',
   itemsUnit: 'صنف',
+  continueWithGoogle: 'المتابعة باستخدام Google',
+  continueWithFacebook: 'المتابعة باستخدام Facebook',
+  continueWithApple: 'المتابعة باستخدام Apple',
+  orWithEmailPassword: 'أو يدويًا عبر البريد الإلكتروني وكلمة المرور',
+  signedOutBanner: 'تم تسجيل الخروج. يرجى تسجيل الدخول أو إنشاء حساب للمتابعة.',
+  enterEmail: 'أدخل البريد الإلكتروني',
+  enterPassword: 'أدخل كلمة المرور',
+  dontHaveAccount: 'ليس لديك حساب؟ إنشاء حساب جديد',
+  alreadyHaveAccount: 'لديك حساب بالفعل؟ تسجيل الدخول',
 };
 
 const EN_TRANSLATIONS: Translations = {
@@ -328,7 +346,7 @@ const EN_TRANSLATIONS: Translations = {
   login: 'Sign In',
   logout: 'Sign Out',
   signIn: 'Sign In',
-  signUp: 'Create Account',
+  signUp: 'Sign Up',
   username: 'Username',
   password: 'Password',
   fullName: 'Full Name',
@@ -339,8 +357,8 @@ const EN_TRANSLATIONS: Translations = {
   loginToContinue: 'Sign in to access your checklist and cloud sync',
   quickDemoLogin: 'Quick Demo Login',
   orEnterCredentials: 'Or enter your credentials',
-  invalidCredentials: 'Invalid username or password',
-  userAlreadyExists: 'Username or email already registered',
+  invalidCredentials: 'Invalid email or password',
+  userAlreadyExists: 'An account with this email already exists',
   registrationSuccess: 'Account created successfully and signed in',
   selectRole: 'Select Role',
   chooseAvatar: 'Choose Avatar',
@@ -378,6 +396,15 @@ const EN_TRANSLATIONS: Translations = {
   byStatus: 'Status',
   allCount: 'items',
   itemsUnit: 'items',
+  continueWithGoogle: 'Continue with Google',
+  continueWithFacebook: 'Continue with Facebook',
+  continueWithApple: 'Continue with Apple',
+  orWithEmailPassword: 'Or manually with Email and Password',
+  signedOutBanner: 'You are signed out. Please sign in or sign up to continue.',
+  enterEmail: 'Enter your email address',
+  enterPassword: 'Enter your password',
+  dontHaveAccount: "Don't have an account? Sign Up",
+  alreadyHaveAccount: 'Already have an account? Sign In',
 };
 
 @Injectable({

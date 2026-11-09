@@ -205,9 +205,9 @@
     ></app-project-modal>
   }
 
-  @if (showAuthModal() || auth.showAuthModal()) {
+  @if (!auth.isAuthenticated() || showAuthModal() || auth.showAuthModal()) {
     <app-auth-modal
-      (closeModal)="showAuthModal.set(false); auth.showAuthModal.set(false)"
+      (closeModal)="closeAuth()"
     ></app-auth-modal>
   }
 

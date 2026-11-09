@@ -310,77 +310,68 @@ import { AuthService, UserProfile } from '../services/auth.service';
 
             <!-- User Profile & Auth Dropdown (Desktop) -->
             <div class="relative hidden sm:block">
-              <button
-                type="button"
-                (click)="toggleUserMenu()"
-                class="flex items-center gap-1.5 px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                aria-label="User Profile"
-              >
-                <span class="text-lg leading-none">{{ auth.currentUser().avatar }}</span>
-                <div class="hidden xl:block text-start">
-                  <div class="text-xs font-bold leading-tight text-slate-900 dark:text-slate-100 max-w-[100px] truncate">
-                    {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
+              @if (auth.isAuthenticated()) {
+                <button
+                  type="button"
+                  (click)="toggleUserMenu()"
+                  class="flex items-center gap-1.5 px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  aria-label="User Profile"
+                >
+                  <span class="text-lg leading-none">{{ auth.currentUser().avatar }}</span>
+                  <div class="hidden xl:block text-start">
+                    <div class="text-xs font-bold leading-tight text-slate-900 dark:text-slate-100 max-w-[110px] truncate">
+                      {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
+                    </div>
+                    <div class="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <span>{{ auth.currentUser().role.toUpperCase() }}</span>
+                      <span>• {{ auth.sessionRemainingMinutes() }}m</span>
+                    </div>
                   </div>
-                  <div class="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                    <span>{{ auth.currentUser().role.toUpperCase() }}</span>
-                    <span>• {{ auth.sessionRemainingMinutes() }}m</span>
-                  </div>
-                </div>
-              </button>
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  (click)="onOpenAuthModal()"
+                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+                >
+                  <mat-icon class="!text-sm !w-4 !h-4">login</mat-icon>
+                  <span>{{ i18n.t().signIn }}</span>
+                </button>
+              }
 
-              @if (showUserMenu()) {
+              @if (showUserMenu() && auth.isAuthenticated()) {
                 <div class="absolute mt-2 w-64 rounded-xl shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-2 z-50"
                      [class.right-0]="!i18n.isRtl()" [class.left-0]="i18n.isRtl()">
-                  <div class="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+                  <div class="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800">
                     <div class="font-bold text-sm text-slate-900 dark:text-slate-100">
                       {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
                     </div>
                     <div class="text-xs text-slate-500 dark:text-slate-400 truncate">
-                      @{{ auth.currentUser().username }} • {{ auth.currentUser().email }}
+                      {{ auth.currentUser().email }}
                     </div>
-                    <div class="mt-1 flex items-center justify-between text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                    <div class="mt-1.5 flex items-center justify-between text-[11px] font-semibold text-blue-600 dark:text-blue-400">
                       <span>{{ auth.currentUser().role.toUpperCase() }}</span>
                       <span class="text-emerald-600 dark:text-emerald-400">{{ auth.sessionRemainingMinutes() }}m</span>
                     </div>
                   </div>
 
-                  <div class="px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    {{ i18n.t().switchUser }}:
-                  </div>
-
-                  @for (user of auth.users(); track user.id) {
-                    <button
-                      type="button"
-                      (click)="switchUser(user)"
-                      class="w-full flex items-center justify-between px-3 py-1.5 text-xs text-start hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                      [class.bg-blue-50]="auth.currentUser().id === user.id"
-                      [class.dark:bg-blue-950/40]="auth.currentUser().id === user.id"
-                    >
-                      <div class="flex items-center gap-2">
-                        <span>{{ user.avatar }}</span>
-                        <div>
-                          <div class="font-medium text-slate-800 dark:text-slate-200">
-                            {{ i18n.isRtl() ? user.name : user.nameEn }}
-                          </div>
-                          <div class="text-[10px] text-slate-400">
-                            @{{ user.username }} • {{ user.role }}
-                          </div>
-                        </div>
-                      </div>
-                      @if (auth.currentUser().id === user.id) {
-                        <mat-icon class="text-blue-600 text-sm">check</mat-icon>
-                      }
-                    </button>
-                  }
-
-                  <div class="border-t border-slate-100 dark:border-slate-800 mt-2 pt-1 space-y-1">
+                  <div class="pt-1 space-y-1">
                     <button
                       type="button"
                       (click)="onOpenAuthModal()"
                       class="w-full flex items-center gap-2 px-3 py-2 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 font-bold cursor-pointer"
                     >
                       <mat-icon class="text-sm">manage_accounts</mat-icon>
-                      <span>{{ i18n.isRtl() ? 'تسجيل الدخول / إنشاء حساب / الصلاحيات' : 'Sign In / Sign Up / Manage Roles' }}</span>
+                      <span>{{ i18n.isRtl() ? 'إدارة الحسابات والصلاحيات' : 'Account & Role Settings' }}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      (click)="onLogout()"
+                      class="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold cursor-pointer"
+                    >
+                      <mat-icon class="text-sm">logout</mat-icon>
+                      <span>{{ i18n.t().logout }}</span>
                     </button>
                   </div>
                 </div>
@@ -407,22 +398,29 @@ import { AuthService, UserProfile } from '../services/auth.service';
         <div class="sm:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-4 shadow-xl animate-in slide-in-from-top-2 duration-150">
           
           <!-- Mobile Active User Info & Session Timer -->
-          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-            <div class="flex items-center gap-2.5">
-              <span class="text-2xl p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-xs">{{ auth.currentUser().avatar }}</span>
-              <div>
-                <div class="font-bold text-xs text-slate-900 dark:text-slate-100">
-                  {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
-                </div>
-                <div class="text-[10px] text-slate-400">
-                  @{{ auth.currentUser().username }} • {{ auth.sessionRemainingMinutes() }}m
+          @if (auth.isAuthenticated()) {
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="text-2xl p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-xs shrink-0">{{ auth.currentUser().avatar }}</span>
+                <div class="min-w-0">
+                  <div class="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                    {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
+                  </div>
+                  <div class="text-[10px] text-slate-400 truncate">
+                    {{ auth.currentUser().email }} • {{ auth.sessionRemainingMinutes() }}m
+                  </div>
                 </div>
               </div>
+              <button
+                type="button"
+                (click)="onLogout(); showMobileMenu.set(false)"
+                class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+              >
+                <mat-icon class="!text-xs !w-3.5 !h-3.5">logout</mat-icon>
+                <span>{{ i18n.t().logout }}</span>
+              </button>
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-              {{ auth.currentUser().role.toUpperCase() }}
-            </span>
-          </div>
+          }
 
           <!-- Mobile Projects & Folders Dropdown Menu -->
           <div>
@@ -645,6 +643,11 @@ export class NavbarComponent {
   onOpenAuthModal() {
     this.showUserMenu.set(false);
     this.openAuthModal.emit();
+  }
+
+  onLogout() {
+    this.showUserMenu.set(false);
+    this.auth.logout(false);
   }
 
   workspaceModalTrigger() {

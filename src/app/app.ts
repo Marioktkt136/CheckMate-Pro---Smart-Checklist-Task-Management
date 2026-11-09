@@ -125,6 +125,13 @@ export class App {
     this.showAuthModal.set(true);
   }
 
+  closeAuth() {
+    if (this.auth.isAuthenticated()) {
+      this.showAuthModal.set(false);
+      this.auth.showAuthModal.set(false);
+    }
+  }
+
   exportPdf() {
     this.showPrintReport.set(true);
   }
