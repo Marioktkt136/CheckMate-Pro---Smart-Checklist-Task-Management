@@ -43,6 +43,8 @@ export interface ChecklistItem {
   }[];
   reminderSet?: boolean;
   reminderDate?: string;
+  ownerId?: string;
+  isPublished?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -54,6 +56,8 @@ export interface ProjectFolder {
   icon: string;
   color: string;
   budget: number;
+  ownerId?: string;
+  isPublished?: boolean;
 }
 
 export interface ChecklistStats {

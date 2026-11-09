@@ -3,55 +3,54 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { I18nService } from '../services/i18n.service';
 import { StorageService } from '../services/storage.service';
-import { AuthService, DEMO_USERS, UserProfile } from '../services/auth.service';
+import { AuthService, UserProfile } from '../services/auth.service';
 
 @Component({
   selector: 'app-navbar',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, MatIconModule],
   template: `
-    <header class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors w-full">
-      <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16 gap-1 sm:gap-3">
+    <header class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors w-full">
+      <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+        <div class="flex items-center justify-between h-14 sm:h-16 gap-2">
           
-          <!-- Logo & Brand -->
-          <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <mat-icon class="text-xl sm:text-2xl">checklist_rtl</mat-icon>
+          <!-- Logo & Brand (Responsive) -->
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+              <mat-icon class="text-lg sm:text-xl">checklist_rtl</mat-icon>
             </div>
             <div>
-              <div class="flex items-center gap-1 sm:gap-2">
-                <span class="font-extrabold text-sm sm:text-lg tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <div class="flex items-center gap-1 sm:gap-1.5">
+                <span class="font-extrabold text-xs sm:text-base tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   {{ i18n.t().appName }}
                 </span>
-                <span class="text-[9px] sm:text-[10px] font-semibold px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                   PRO
                 </span>
               </div>
-              <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hidden md:block">
+              <p class="text-[9px] text-slate-400 hidden lg:block">
                 {{ i18n.t().appSubtitle }}
               </p>
             </div>
           </div>
 
-          <!-- Project Selector & Sync Status -->
-          <div class="flex items-center gap-1 sm:gap-2 min-w-0">
-            <!-- Project Folder Selector -->
+          <!-- Project Selector & Cloud Status (Desktop) -->
+          <div class="hidden sm:flex items-center gap-2 min-w-0">
+            <!-- Project Folder Selector Dropdown -->
             <div class="relative">
               <button
                 type="button"
                 (click)="toggleProjectsMenu()"
-                class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs sm:text-sm font-medium transition cursor-pointer text-slate-800 dark:text-slate-200"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs sm:text-sm font-medium transition cursor-pointer text-slate-800 dark:text-slate-200"
                 aria-label="Select Project Folder"
               >
-                <mat-icon class="text-blue-600 dark:text-blue-400 text-base sm:text-lg shrink-0">folder</mat-icon>
-                <span class="hidden sm:inline max-w-[180px] truncate text-xs sm:text-sm font-semibold">
+                <mat-icon class="text-blue-600 dark:text-blue-400 text-base shrink-0">folder</mat-icon>
+                <span class="max-w-[140px] md:max-w-[200px] truncate text-xs sm:text-sm font-semibold">
                   {{ i18n.isRtl() ? storage.activeProject().nameAr : storage.activeProject().nameEn }}
                 </span>
-                <mat-icon class="text-slate-400 text-xs sm:text-base shrink-0">expand_more</mat-icon>
+                <mat-icon class="text-slate-400 text-xs shrink-0">expand_more</mat-icon>
               </button>
 
-              <!-- Dropdown for Folders -->
               @if (showProjectsMenu()) {
                 <div class="absolute mt-2 w-72 rounded-xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                      [class.right-0]="!i18n.isRtl()" [class.left-0]="i18n.isRtl()">
@@ -91,51 +90,31 @@ import { AuthService, DEMO_USERS, UserProfile } from '../services/auth.service';
               }
             </div>
 
-            <!-- Sync Indicator Badge -->
+            <!-- Real-Time Cloud Firestore Sync Badge -->
             <button
               type="button"
               (click)="storage.syncWithServer()"
-              [title]="storage.isOnline() ? i18n.t().synced : i18n.t().offline"
-              class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition cursor-pointer"
-              [class.bg-emerald-50]="storage.isOnline() && !storage.hasPendingSync()"
-              [class.text-emerald-700]="storage.isOnline() && !storage.hasPendingSync()"
-              [class.border-emerald-200]="storage.isOnline() && !storage.hasPendingSync()"
-              [class.dark:bg-emerald-950/40]="storage.isOnline() && !storage.hasPendingSync()"
-              [class.dark:text-emerald-300]="storage.isOnline() && !storage.hasPendingSync()"
-              [class.dark:border-emerald-800]="storage.isOnline() && !storage.hasPendingSync()"
-              [class.bg-amber-50]="!storage.isOnline() || storage.hasPendingSync()"
-              [class.text-amber-700]="!storage.isOnline() || storage.hasPendingSync()"
-              [class.border-amber-200]="!storage.isOnline() || storage.hasPendingSync()"
-              [class.dark:bg-amber-950/40]="!storage.isOnline() || storage.hasPendingSync()"
-              [class.dark:text-amber-300]="!storage.isOnline() || storage.hasPendingSync()"
-              [class.dark:border-amber-800]="!storage.isOnline() || storage.hasPendingSync()"
+              [title]="'مزامنة سحابية مع Firestore: ' + storage.cloudDbId"
+              class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition cursor-pointer bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
             >
-              @if (storage.isSyncing()) {
-                <mat-icon class="text-sm animate-spin">sync</mat-icon>
-                <span>{{ i18n.t().syncing }}</span>
-              } @else if (storage.isOnline() && !storage.hasPendingSync()) {
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>{{ i18n.t().synced }}</span>
-              } @else {
-                <mat-icon class="text-sm">cloud_off</mat-icon>
-                <span>{{ storage.isOnline() ? i18n.t().pendingSync : i18n.t().offline }}</span>
-              }
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="font-mono text-[11px]">Firestore Cloud</span>
             </button>
           </div>
 
-          <!-- Actions: Export, Notifications, Theme, Language, Profile -->
-          <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+          <!-- Actions Bar (Desktop & Mobile) -->
+          <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
 
-            <!-- Export / Backup Dropdown -->
-            <div class="relative">
+            <!-- Export / Backup Dropdown (Desktop) -->
+            <div class="relative hidden sm:block">
               <button
                 type="button"
                 (click)="toggleExportMenu()"
-                class="p-1 sm:p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                class="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                 aria-label="Export and Backup Menu"
-                title="Export / Backup"
+                title="تصدير ونسخ احتياطي"
               >
-                <mat-icon class="text-lg sm:text-xl">download</mat-icon>
+                <mat-icon class="text-xl">download</mat-icon>
               </button>
 
               @if (showExportMenu()) {
@@ -156,6 +135,15 @@ import { AuthService, DEMO_USERS, UserProfile } from '../services/auth.service';
                   >
                     <mat-icon class="text-emerald-500 text-base">table_view</mat-icon>
                     <span>{{ i18n.t().exportCsv }}</span>
+                  </button>
+                  <div class="border-t border-slate-100 dark:border-slate-800 my-1"></div>
+                  <button
+                    type="button"
+                    (click)="openGoogleSheetImport.emit(); showExportMenu.set(false)"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition cursor-pointer font-medium"
+                  >
+                    <mat-icon class="text-emerald-600 dark:text-emerald-400 text-base">table_chart</mat-icon>
+                    <span>استيراد من Google Sheets</span>
                   </button>
                   <div class="border-t border-slate-100 dark:border-slate-800 my-1"></div>
                   <button
@@ -191,20 +179,20 @@ import { AuthService, DEMO_USERS, UserProfile } from '../services/auth.service';
               <button
                 type="button"
                 (click)="toggleNotificationsMenu()"
-                class="relative p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                class="relative p-1.5 sm:p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                 aria-label="Notifications"
                 title="Notifications"
               >
-                <mat-icon class="text-xl">notifications</mat-icon>
+                <mat-icon class="text-lg sm:text-xl">notifications</mat-icon>
                 @if (storage.unreadNotificationsCount() > 0) {
-                  <span class="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span class="absolute top-1 right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                     {{ storage.unreadNotificationsCount() }}
                   </span>
                 }
               </button>
 
               @if (showNotificationsMenu()) {
-                <div class="absolute mt-2 w-80 sm:w-96 rounded-xl shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-2 z-50"
+                <div class="absolute mt-2 w-72 sm:w-96 rounded-xl shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-2 z-50"
                      [class.right-0]="!i18n.isRtl()" [class.left-0]="i18n.isRtl()">
                   <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-800">
                     <span class="font-bold text-sm text-slate-800 dark:text-slate-200">
@@ -252,17 +240,6 @@ import { AuthService, DEMO_USERS, UserProfile } from '../services/auth.service';
                       </div>
                     }
                   </div>
-
-                  <div class="border-t border-slate-100 dark:border-slate-800 p-2 text-center">
-                    <button
-                      type="button"
-                      (click)="storage.requestPushNotifications()"
-                      class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <mat-icon class="text-sm">notifications_active</mat-icon>
-                      <span>تفعيل تنبيهات المتصفح الفورية (Push)</span>
-                    </button>
-                  </div>
                 </div>
               }
             </div>
@@ -271,43 +248,41 @@ import { AuthService, DEMO_USERS, UserProfile } from '../services/auth.service';
             <button
               type="button"
               (click)="storage.toggleDarkMode()"
-              class="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              class="p-1.5 sm:p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               [title]="storage.isDarkMode() ? i18n.t().lightMode : i18n.t().darkMode"
               aria-label="Toggle Theme"
             >
-              <mat-icon class="text-xl">
+              <mat-icon class="text-lg sm:text-xl">
                 {{ storage.isDarkMode() ? 'light_mode' : 'dark_mode' }}
               </mat-icon>
             </button>
 
-            <!-- Language Switcher (Ar / En) -->
+            <!-- Language Switcher -->
             <button
               type="button"
               (click)="i18n.toggleLanguage()"
-              class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer flex items-center gap-1"
-              title="Language / اللغة"
-              aria-label="Toggle Language"
+              class="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer flex items-center gap-1"
+              title="Toggle Language"
             >
               <mat-icon class="text-sm">translate</mat-icon>
-              <span>{{ i18n.currentLang() === 'ar' ? 'English' : 'عربي' }}</span>
+              <span class="hidden md:inline">{{ i18n.currentLang() === 'ar' ? 'English' : 'عربي' }}</span>
             </button>
 
-            <!-- User Auth & Role Profile Button -->
-            <div class="relative">
+            <!-- User Profile & Roles Dropdown (Desktop) -->
+            <div class="relative hidden sm:block">
               <button
                 type="button"
                 (click)="toggleUserMenu()"
-                class="flex items-center gap-2 p-1.5 sm:px-2.5 sm:py-1 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                class="flex items-center gap-1.5 px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                 aria-label="User Profile"
               >
-                <span class="text-xl leading-none">{{ auth.currentUser().avatar }}</span>
-                <div class="hidden lg:block text-right">
-                  <div class="text-xs font-bold leading-tight text-slate-900 dark:text-slate-100">
+                <span class="text-lg leading-none">{{ auth.currentUser().avatar }}</span>
+                <div class="hidden xl:block text-right">
+                  <div class="text-xs font-bold leading-tight text-slate-900 dark:text-slate-100 max-w-[100px] truncate">
                     {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
                   </div>
-                  <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
-                    <mat-icon class="text-[10px]">verified_user</mat-icon>
-                    <span>{{ auth.currentUser().role.toUpperCase() }}</span>
+                  <div class="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    {{ auth.currentUser().role.toUpperCase() }}
                   </div>
                 </div>
               </button>
@@ -322,17 +297,16 @@ import { AuthService, DEMO_USERS, UserProfile } from '../services/auth.service';
                     <div class="text-xs text-slate-500 dark:text-slate-400 truncate">
                       {{ auth.currentUser().email }}
                     </div>
-                    <div class="mt-1 flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                      <mat-icon class="text-xs">lock</mat-icon>
-                      <span>{{ i18n.t().mfaSecured }}</span>
+                    <div class="mt-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                      الصلاحية: {{ auth.currentUser().role.toUpperCase() }}
                     </div>
                   </div>
 
                   <div class="px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    {{ i18n.t().quickDemoUsers }}
+                    تبديل سريع للمستخدم:
                   </div>
 
-                  @for (user of demoUsers; track user.id) {
+                  @for (user of auth.users(); track user.id) {
                     <button
                       type="button"
                       (click)="switchUser(user)"
@@ -347,7 +321,7 @@ import { AuthService, DEMO_USERS, UserProfile } from '../services/auth.service';
                             {{ i18n.isRtl() ? user.name : user.nameEn }}
                           </div>
                           <div class="text-[10px] text-slate-400">
-                            {{ user.role === 'admin' ? i18n.t().roleAdmin : user.role === 'editor' ? i18n.t().roleEditor : i18n.t().roleViewer }}
+                            {{ user.role }}
                           </div>
                         </div>
                       </div>
@@ -361,20 +335,149 @@ import { AuthService, DEMO_USERS, UserProfile } from '../services/auth.service';
                     <button
                       type="button"
                       (click)="onOpenAuthModal()"
-                      class="w-full flex items-center gap-2 px-3 py-2 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 font-medium cursor-pointer"
+                      class="w-full flex items-center gap-2 px-3 py-2 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 font-bold cursor-pointer"
                     >
-                      <mat-icon class="text-sm">security</mat-icon>
-                      <span>إدارة المصادقة الثنائية والحساب (MFA)</span>
+                      <mat-icon class="text-sm">manage_accounts</mat-icon>
+                      <span>إدارة المستخدمين والصلاحيات (Users &amp; Roles)</span>
                     </button>
                   </div>
                 </div>
               }
             </div>
 
+            <!-- Mobile Hamburger Menu Button (Mobile Only) -->
+            <button
+              type="button"
+              (click)="toggleMobileMenu()"
+              class="sm:hidden p-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              aria-label="القائمة الرئيسية"
+            >
+              <mat-icon class="text-2xl">{{ showMobileMenu() ? 'close' : 'menu' }}</mat-icon>
+            </button>
+
           </div>
 
         </div>
       </div>
+
+      <!-- Mobile Dropdown Drawer -->
+      @if (showMobileMenu()) {
+        <div class="sm:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-4 shadow-xl animate-in slide-in-from-top-2 duration-150">
+          
+          <!-- Mobile Active User Info -->
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-xs">{{ auth.currentUser().avatar }}</span>
+              <div>
+                <div class="font-bold text-xs text-slate-900 dark:text-slate-100">{{ auth.currentUser().name }}</div>
+                <div class="text-[10px] text-slate-400">{{ auth.currentUser().email }}</div>
+              </div>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+              {{ auth.currentUser().role.toUpperCase() }}
+            </span>
+          </div>
+
+          <!-- Mobile Project Switcher -->
+          <div>
+            <div class="text-xs font-semibold text-slate-500 mb-1.5">المشروع الحالي:</div>
+            <div class="grid grid-cols-1 gap-1.5">
+              @for (proj of storage.projects(); track proj.id) {
+                <button
+                  type="button"
+                  (click)="selectProject(proj.id); showMobileMenu.set(false)"
+                  class="flex items-center justify-between p-2 rounded-lg text-xs font-medium border text-right transition cursor-pointer"
+                  [class.bg-blue-50]="storage.activeProjectId() === proj.id"
+                  [class.border-blue-300]="storage.activeProjectId() === proj.id"
+                  [class.text-blue-700]="storage.activeProjectId() === proj.id"
+                  [class.dark:bg-blue-950/40]="storage.activeProjectId() === proj.id"
+                  [class.dark:border-blue-800]="storage.activeProjectId() === proj.id"
+                  [class.dark:text-blue-300]="storage.activeProjectId() === proj.id"
+                  [class.bg-white]="storage.activeProjectId() !== proj.id"
+                  [class.dark:bg-slate-800]="storage.activeProjectId() !== proj.id"
+                  [class.border-slate-200]="storage.activeProjectId() !== proj.id"
+                  [class.dark:border-slate-700]="storage.activeProjectId() !== proj.id"
+                >
+                  <div class="flex items-center gap-2">
+                    <mat-icon class="text-base" [style.color]="proj.color">{{ proj.icon }}</mat-icon>
+                    <span>{{ i18n.isRtl() ? proj.nameAr : proj.nameEn }}</span>
+                  </div>
+                  @if (storage.activeProjectId() === proj.id) {
+                    <mat-icon class="text-sm">check</mat-icon>
+                  }
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Mobile Cloud Status Indicator -->
+          <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <div>
+                <div class="font-bold text-[11px]">قاعدة بيانات Firestore متزامنة</div>
+                <div class="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono">gen-lang-client-0495942485</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              (click)="storage.syncWithServer()"
+              class="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold cursor-pointer"
+            >
+              مزامنة الآن
+            </button>
+          </div>
+
+          <!-- Mobile Action Buttons -->
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+            <button
+              type="button"
+              (click)="onOpenAuthModal(); showMobileMenu.set(false)"
+              class="p-2.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <mat-icon class="text-base">manage_accounts</mat-icon>
+              <span>إدارة المستخدمين</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="workspaceModalTrigger(); showMobileMenu.set(false)"
+              class="p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <mat-icon class="text-base">cloud_sync</mat-icon>
+              <span>Google Workspace</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="exportPdfTrigger(); showMobileMenu.set(false)"
+              class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+            >
+              <mat-icon class="text-rose-500 text-base">picture_as_pdf</mat-icon>
+              <span>PDF تقرير</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="exportCsvTrigger(); showMobileMenu.set(false)"
+              class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+            >
+              <mat-icon class="text-emerald-500 text-base">table_view</mat-icon>
+              <span>Excel (CSV)</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="openGoogleSheetImport.emit(); showMobileMenu.set(false)"
+              class="col-span-2 p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <mat-icon class="text-emerald-600 dark:text-emerald-400 text-base">table_chart</mat-icon>
+              <span>استيراد جدول Google Sheets (مخطط الأعمدة)</span>
+            </button>
+          </div>
+
+        </div>
+      }
     </header>
   `,
 })
@@ -383,16 +486,16 @@ export class NavbarComponent {
   storage = inject(StorageService);
   auth = inject(AuthService);
 
-  demoUsers = DEMO_USERS;
-
   showProjectsMenu = signal<boolean>(false);
   showNotificationsMenu = signal<boolean>(false);
   showUserMenu = signal<boolean>(false);
   showExportMenu = signal<boolean>(false);
+  showMobileMenu = signal<boolean>(false);
 
   openNewProjectModal = output<void>();
   openAuthModal = output<void>();
   openWorkspaceModal = output<void>();
+  openGoogleSheetImport = output<void>();
   triggerPdfExport = output<void>();
   triggerCsvExport = output<void>();
 
@@ -422,6 +525,14 @@ export class NavbarComponent {
     this.showProjectsMenu.set(false);
     this.showNotificationsMenu.set(false);
     this.showUserMenu.set(false);
+  }
+
+  toggleMobileMenu() {
+    this.showMobileMenu.update(v => !v);
+    this.showProjectsMenu.set(false);
+    this.showNotificationsMenu.set(false);
+    this.showUserMenu.set(false);
+    this.showExportMenu.set(false);
   }
 
   selectProject(id: string) {

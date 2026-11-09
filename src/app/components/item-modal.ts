@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, input, output, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, input, output, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -39,9 +39,12 @@ import { ChecklistItem, ItemPriority, ItemStatus } from '../core/checklist-rules
           <!-- Category & Title -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label for="item-category" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                {{ i18n.t().category }} *
-              </label>
+              <div class="flex items-center justify-between mb-1">
+                <label for="item-category" class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {{ i18n.t().category }} *
+                </label>
+                <span class="text-[10px] text-slate-400">انقر للاختيار السريع</span>
+              </div>
               <input
                 id="item-category"
                 type="text"
@@ -49,6 +52,18 @@ import { ChecklistItem, ItemPriority, ItemStatus } from '../core/checklist-rules
                 placeholder="مثال: الأجهزة الأساسية"
                 class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <!-- Quick Category Chips for Mobile & Desktop -->
+              <div class="flex flex-wrap gap-1 mt-1.5">
+                @for (cat of availableCategories(); track cat) {
+                  <button
+                    type="button"
+                    (click)="form.patchValue({ category: cat })"
+                    class="text-[10px] px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-300 transition cursor-pointer"
+                  >
+                    {{ cat }}
+                  </button>
+                }
+              </div>
             </div>
 
             <div>
@@ -196,6 +211,20 @@ import { ChecklistItem, ItemPriority, ItemStatus } from '../core/checklist-rules
             />
           </div>
 
+          <!-- Publish to Shared Workspace Toggle -->
+          <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                formControlName="isPublished"
+                class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+              />
+              <span class="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                نشر هذا الصنف للجميع في مساحة العمل المشتركة (Published)
+              </span>
+            </label>
+          </div>
+
           <!-- Buttons -->
           <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button
@@ -227,6 +256,13 @@ export class ItemModalComponent implements OnInit {
   item = input<ChecklistItem | null>(null);
   closeModal = output<void>();
 
+  availableCategories = computed(() => {
+    const defaultCats = ['الأجهزة الأساسية', 'أجهزة المطبخ', 'أجهزة التنظيف والكي', 'الرفاهية المطبخية'];
+    const projectCats = this.storage.currentProjectItems().map(it => it.category).filter(Boolean);
+    const set = new Set<string>([...defaultCats, ...projectCats]);
+    return Array.from(set);
+  });
+
   form = new FormGroup({
     category: new FormControl('', [Validators.required]),
     titleAr: new FormControl('', [Validators.required]),
@@ -239,6 +275,7 @@ export class ItemModalComponent implements OnInit {
     actualCost: new FormControl(0),
     targetDate: new FormControl(''),
     tagsString: new FormControl(''),
+    isPublished: new FormControl(true),
   });
 
   ngOnInit() {
@@ -256,10 +293,12 @@ export class ItemModalComponent implements OnInit {
         actualCost: it.actualCost,
         targetDate: it.targetDate,
         tagsString: (it.tags || []).join(', '),
+        isPublished: it.isPublished !== undefined ? it.isPublished : true,
       });
     } else {
       this.form.patchValue({
         category: 'الأجهزة الأساسية',
+        isPublished: true,
       });
     }
   }
@@ -268,6 +307,7 @@ export class ItemModalComponent implements OnInit {
     if (this.form.invalid) return;
     const v = this.form.value;
     const rawTags = (v.tagsString || '').split(',').map(s => s.trim()).filter(Boolean);
+    const isPublished = v.isPublished !== false;
 
     const it = this.item();
     if (it) {
@@ -284,6 +324,7 @@ export class ItemModalComponent implements OnInit {
         actualCost: Number(v.actualCost) || 0,
         targetDate: v.targetDate || '',
         tags: rawTags,
+        isPublished,
       });
     } else {
       this.storage.addItem({
@@ -300,6 +341,7 @@ export class ItemModalComponent implements OnInit {
         currency: 'EGP',
         targetDate: v.targetDate || '',
         tags: rawTags,
+        isPublished,
       });
     }
     this.closeModal.emit();

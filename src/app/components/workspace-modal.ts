@@ -107,6 +107,28 @@ import { WorkspaceService, WorkspaceExportResult } from '../services/workspace.s
               }
             </div>
           </div>
+
+          <!-- Domain Authorization & Error Box for Vercel/Production -->
+          @if (authErrorMessage()) {
+            <div class="mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-2">
+              <div class="flex items-start gap-2">
+                <mat-icon class="text-amber-600 shrink-0 text-base">warning</mat-icon>
+                <div class="flex-1 font-medium leading-relaxed">{{ authErrorMessage() }}</div>
+              </div>
+              <div class="flex items-center gap-2 pt-1 border-t border-amber-200 dark:border-amber-800/60">
+                <span class="text-[11px] font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-700">
+                  {{ currentHostname }}
+                </span>
+                <button
+                  type="button"
+                  (click)="copyHostname()"
+                  class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold cursor-pointer transition"
+                >
+                  نسخ النطاق لإضافته في Firebase
+                </button>
+              </div>
+            </div>
+          }
         </div>
 
         <!-- Result / Notification Banner -->
@@ -280,20 +302,48 @@ export class WorkspaceModal {
 
   readonly isBusy = signal<boolean>(false);
   readonly lastResult = signal<WorkspaceExportResult | null>(null);
+  readonly authErrorMessage = signal<string | null>(null);
+  readonly currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
 
   readonly emailForm = new FormGroup({
     recipient: new FormControl('marionbedrous@gmail.com', [Validators.required, Validators.email])
   });
 
+  copyHostname() {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(this.currentHostname);
+      alert(this.lang() === 'ar' ? `تم نسخ النطاق (${this.currentHostname}) بنجاح!` : `Copied (${this.currentHostname}) to clipboard!`);
+    }
+  }
+
   async handleSignIn(): Promise<void> {
+    this.authErrorMessage.set(null);
     try {
       await this.firebase.signInWithGoogle();
       const user = this.firebase.currentUser();
       if (user?.email) {
         this.emailForm.patchValue({ recipient: user.email });
       }
-    } catch {
-      // User closed popup or error
+    } catch (err: unknown) {
+      const errStr = String(err);
+      const code = (err as { code?: string })?.code || '';
+      if (code === 'auth/unauthorized-domain' || errStr.includes('unauthorized-domain')) {
+        this.authErrorMessage.set(
+          this.lang() === 'ar'
+            ? `نطاق التطبيق الحالي (${this.currentHostname}) غير مصرح به في إعدادات Firebase Authentication. لإصلاحه في Vercel: ادخل إلى Firebase Console > Authentication > Settings > Authorized domains وأضف هذا النطاق.`
+            : `Current app domain (${this.currentHostname}) is not authorized in Firebase Auth. To fix on Vercel: go to Firebase Console > Authentication > Settings > Authorized domains and add this domain.`
+        );
+      } else if (code === 'auth/popup-blocked') {
+        this.authErrorMessage.set(
+          this.lang() === 'ar'
+            ? 'تم حظر النافذة المنبثقة من قبل المتصفح. يرجى تفعيل النوافذ المنبثقة لحساب Google.'
+            : 'Popup blocked by browser. Please allow popups to sign in with Google.'
+        );
+      } else if (code === 'auth/popup-closed-by-user') {
+        // User voluntarily closed popup
+      } else {
+        this.authErrorMessage.set((err as { message?: string })?.message || errStr);
+      }
     }
   }
 

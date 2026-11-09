@@ -5,6 +5,7 @@
     (openNewProjectModal)="openNewProject()"
     (openAuthModal)="openAuth()"
     (openWorkspaceModal)="openWorkspace()"
+    (openGoogleSheetImport)="openGoogleSheetImport()"
     (triggerPdfExport)="exportPdf()"
     (triggerCsvExport)="exportCsv()"
   ></app-navbar>
@@ -135,6 +136,7 @@
         (consultAiTrigger)="openConsultAi($event)"
         (openCommentsTrigger)="openComments($event)"
         (openAttachmentsTrigger)="openAttachments($event)"
+        (openGoogleSheetImport)="openGoogleSheetImport()"
       ></app-checklist-view>
     }
 
@@ -213,6 +215,12 @@
     <app-print-report
       (closeReport)="showPrintReport.set(false)"
     ></app-print-report>
+  }
+
+  @if (showGoogleSheetImportModal()) {
+    <app-google-sheet-import-modal
+      (closeModal)="showGoogleSheetImportModal.set(false)"
+    ></app-google-sheet-import-modal>
   }
 
 </div>

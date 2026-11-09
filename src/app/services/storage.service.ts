@@ -1,5 +1,7 @@
-import { Injectable, signal, computed, effect } from '@angular/core';
+import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { ChecklistItem, ProjectFolder, ItemStatus } from '../core/checklist-rules';
+import { FirebaseService } from './firebase.service';
+import { AuthService } from './auth.service';
 
 export interface AppNotification {
   id: string;
@@ -317,16 +319,32 @@ const INITIAL_ITEMS: ChecklistItem[] = [
   providedIn: 'root',
 })
 export class StorageService {
+  private firebase = inject(FirebaseService);
+  private auth = inject(AuthService);
+
+  readonly cloudProjectId = 'gen-lang-client-0495942485';
+  readonly cloudDbId = 'ai-studio-checkmateprosmar-13750c5e-07b2-4f6e-9764-100644db56e9';
+  readonly cloudRegion = 'europe-west1';
+
   items = signal<ChecklistItem[]>(INITIAL_ITEMS);
   projects = signal<ProjectFolder[]>(INITIAL_PROJECTS);
   activeProjectId = signal<string>('home_appliances');
 
+  /**
+   * Data scope:
+   * - 'all': Show all user's items + all published items (or full list for admin)
+   * - 'mine': Show only items created/owned by active account
+   * - 'published': Show only items published to shared workspace
+   */
+  dataScope = signal<'all' | 'mine' | 'published'>('all');
+
   isOnline = signal<boolean>(true);
   isSyncing = signal<boolean>(false);
   hasPendingSync = signal<boolean>(false);
-  lastSyncTime = signal<string>('الآن');
+  lastSyncTime = signal<string>('الآن (سحابة Firestore متصلة)');
 
   isDarkMode = signal<boolean>(false);
+  isCloudConnected = computed(() => this.firebase.isConnectedToFirestore());
 
   notifications = signal<AppNotification[]>([
     {
@@ -397,12 +415,40 @@ export class StorageService {
     return this.projects().find(p => p.id === this.activeProjectId()) || this.projects()[0];
   });
 
+  /**
+   * Account-Separated items computed signal
+   */
   currentProjectItems = computed(() => {
-    return this.items().filter(item => item.folderId === this.activeProjectId());
+    const activeId = this.activeProjectId();
+    const currentUserId = this.auth.currentUser().id;
+    const scope = this.dataScope();
+    const all = this.items().filter(item => item.folderId === activeId);
+
+    if (scope === 'mine') {
+      return all.filter(it => it.ownerId === currentUserId);
+    }
+    if (scope === 'published') {
+      return all.filter(it => it.isPublished === true);
+    }
+    // 'all': Show current user's items + any published items, or full list for Admin
+    if (this.auth.isAdmin()) {
+      return all;
+    }
+    return all.filter(it => it.ownerId === currentUserId || it.isPublished !== false);
+  });
+
+  userItemsCount = computed(() => {
+    const currentUserId = this.auth.currentUser().id;
+    return this.items().filter(it => it.ownerId === currentUserId).length;
+  });
+
+  publishedItemsCount = computed(() => {
+    return this.items().filter(it => it.isPublished === true).length;
   });
 
   constructor() {
     this.initClientState();
+    this.initFirestoreSync();
     this.initSyncWatchers();
   }
 
@@ -453,6 +499,47 @@ export class StorageService {
     });
   }
 
+  private initFirestoreSync() {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // 1. Real-time items sync across all devices via Firestore
+      this.firebase.listenToItems((cloudItems) => {
+        if (cloudItems && cloudItems.length > 0) {
+          this.items.set(cloudItems);
+          this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+          this.hasPendingSync.set(false);
+        }
+      });
+
+      // 2. Real-time projects sync across all devices
+      this.firebase.listenToProjects((cloudProjects) => {
+        if (cloudProjects && cloudProjects.length > 0) {
+          this.projects.set(cloudProjects);
+        }
+      });
+
+      // 3. Initial seeding to Firestore if cloud collection is pristine
+      setTimeout(async () => {
+        try {
+          const currentItems = this.items();
+          if (currentItems.length > 0) {
+            // Ensure first item is in Firestore to bootstrap collection
+            await this.firebase.saveItemToFirestore(currentItems[0]);
+          }
+          const currentProjects = this.projects();
+          if (currentProjects.length > 0) {
+            await this.firebase.saveProjectToFirestore(currentProjects[0]);
+          }
+        } catch (e) {
+          console.warn('Initial cloud seed notice:', e);
+        }
+      }, 2000);
+    } catch (err) {
+      console.warn('Firestore real-time sync subscription error:', err);
+    }
+  }
+
   private initSyncWatchers() {
     // Save to local storage whenever items change
     effect(() => {
@@ -488,6 +575,8 @@ export class StorageService {
   }
 
   toggleItemStatus(id: string, targetStatus?: ItemStatus) {
+    let updatedItemRef: ChecklistItem | undefined;
+
     this.items.update(prev =>
       prev.map(item => {
         if (item.id === id) {
@@ -499,31 +588,42 @@ export class StorageService {
             else if (item.status === 'purchased') nextStatus = 'delivered';
             else nextStatus = 'pending';
           }
-          return {
+          const updated: ChecklistItem = {
             ...item,
             status: nextStatus,
             updatedAt: new Date().toISOString(),
           };
+          updatedItemRef = updated;
+          return updated;
         }
         return item;
       })
     );
     this.hasPendingSync.set(true);
+
+    if (updatedItemRef) {
+      this.firebase.saveItemToFirestore(updatedItemRef);
+    }
   }
 
   updateItem(updatedItem: ChecklistItem) {
+    const itemWithTime = { ...updatedItem, updatedAt: new Date().toISOString() };
     this.items.update(prev =>
-      prev.map(item => (item.id === updatedItem.id ? { ...updatedItem, updatedAt: new Date().toISOString() } : item))
+      prev.map(item => (item.id === updatedItem.id ? itemWithTime : item))
     );
     this.hasPendingSync.set(true);
+    this.firebase.saveItemToFirestore(itemWithTime);
   }
 
   addItem(newItem: Omit<ChecklistItem, 'id' | 'createdAt' | 'updatedAt' | 'itemNumber'>) {
     const currentMaxNo = this.items().reduce((max, it) => Math.max(max, it.itemNumber || 0), 0);
+    const currentUserId = this.auth.currentUser().id;
     const item: ChecklistItem = {
       ...newItem,
       id: 'item-' + Date.now(),
       itemNumber: currentMaxNo + 1,
+      ownerId: newItem.ownerId || currentUserId,
+      isPublished: newItem.isPublished !== undefined ? newItem.isPublished : true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       attachments: newItem.attachments || [],
@@ -531,19 +631,87 @@ export class StorageService {
     };
     this.items.update(prev => [...prev, item]);
     this.hasPendingSync.set(true);
+    this.firebase.saveItemToFirestore(item);
 
     this.addNotification({
       title: `تمت إضافة ${item.titleAr || item.titleEn}`,
       titleEn: `Added ${item.titleEn || item.titleAr}`,
-      message: `تمت إضافة صنف جديد بنجاح في مجموعة (${item.category})`,
-      messageEn: `New item added under category (${item.category})`,
+      message: `تمت إضافة صنف جديد بنجاح في مجموعة (${item.category}) ومزامنته سحابياً`,
+      messageEn: `New item added under category (${item.category}) and synced to cloud`,
       type: 'update',
     });
+  }
+
+  togglePublishItem(itemId: string) {
+    let updatedItemRef: ChecklistItem | undefined;
+    this.items.update(prev =>
+      prev.map(it => {
+        if (it.id === itemId) {
+          const nextPub = !it.isPublished;
+          const updated: ChecklistItem = {
+            ...it,
+            isPublished: nextPub,
+            updatedAt: new Date().toISOString()
+          };
+          updatedItemRef = updated;
+          return updated;
+        }
+        return it;
+      })
+    );
+    this.hasPendingSync.set(true);
+    if (updatedItemRef) {
+      this.firebase.saveItemToFirestore(updatedItemRef);
+    }
+  }
+
+  importBatchItems(
+    batch: Omit<ChecklistItem, 'id' | 'createdAt' | 'updatedAt'>[],
+    targetFolderId?: string,
+    isPublished = true
+  ): number {
+    const currentUserId = this.auth.currentUser().id;
+    const folderId = targetFolderId || this.activeProjectId();
+    let currentMax = this.items().reduce((max, it) => Math.max(max, it.itemNumber || 0), 0);
+    const now = new Date().toISOString();
+
+    const createdItems: ChecklistItem[] = batch.map((it, idx) => {
+      currentMax++;
+      return {
+        ...it,
+        id: 'item-' + Date.now() + '-' + idx,
+        itemNumber: it.itemNumber || currentMax,
+        folderId,
+        ownerId: currentUserId,
+        isPublished,
+        createdAt: now,
+        updatedAt: now,
+        attachments: it.attachments || [],
+        comments: it.comments || [],
+      };
+    });
+
+    this.items.update(prev => [...prev, ...createdItems]);
+    this.hasPendingSync.set(true);
+
+    // Save batch to Firestore
+    createdItems.forEach(item => this.firebase.saveItemToFirestore(item));
+
+    this.addNotification({
+      title: 'تم استيراد بيانات Google Sheets',
+      titleEn: 'Google Sheets imported',
+      message: `تم استيراد ${createdItems.length} صنف بنجاح إلى مشروعك ومزامنتها مع السحابة`,
+      messageEn: `Successfully imported ${createdItems.length} items to your project`,
+      type: 'update',
+    });
+
+    return createdItems.length;
   }
 
   deleteItem(id: string) {
     this.items.update(prev => prev.filter(item => item.id !== id));
     this.hasPendingSync.set(true);
+    this.firebase.deleteItemFromFirestore(id);
   }
 
   addProject(project: Omit<ProjectFolder, 'id'>) {
@@ -554,6 +722,7 @@ export class StorageService {
     this.projects.update(prev => [...prev, newProject]);
     this.activeProjectId.set(newProject.id);
     this.hasPendingSync.set(true);
+    this.firebase.saveProjectToFirestore(newProject);
   }
 
   deleteProject(id: string) {
@@ -562,6 +731,7 @@ export class StorageService {
     this.items.update(prev => prev.filter(item => item.folderId !== id));
     this.activeProjectId.set(this.projects()[0].id);
     this.hasPendingSync.set(true);
+    this.firebase.deleteProjectFromFirestore(id);
   }
 
   addComment(itemId: string, text: string, userName: string, avatar = '👤') {
@@ -572,19 +742,26 @@ export class StorageService {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       avatar,
     };
+    let updatedItemRef: ChecklistItem | undefined;
+
     this.items.update(prev =>
       prev.map(it => {
         if (it.id === itemId) {
-          return {
+          const updated = {
             ...it,
             comments: [...(it.comments || []), comment],
             updatedAt: new Date().toISOString(),
           };
+          updatedItemRef = updated;
+          return updated;
         }
         return it;
       })
     );
     this.hasPendingSync.set(true);
+    if (updatedItemRef) {
+      this.firebase.saveItemToFirestore(updatedItemRef);
+    }
   }
 
   addAttachment(itemId: string, attachment: { name: string; size: string; type: 'pdf' | 'image' | 'doc'; url?: string }) {
@@ -593,19 +770,26 @@ export class StorageService {
       date: new Date().toISOString().split('T')[0],
       ...attachment,
     };
+    let updatedItemRef: ChecklistItem | undefined;
+
     this.items.update(prev =>
       prev.map(it => {
         if (it.id === itemId) {
-          return {
+          const updated = {
             ...it,
             attachments: [...(it.attachments || []), newAtt],
             updatedAt: new Date().toISOString(),
           };
+          updatedItemRef = updated;
+          return updated;
         }
         return it;
       })
     );
     this.hasPendingSync.set(true);
+    if (updatedItemRef) {
+      this.firebase.saveItemToFirestore(updatedItemRef);
+    }
   }
 
   postChatMessage(text: string, sender: string, senderRole: string, avatar = '👤') {

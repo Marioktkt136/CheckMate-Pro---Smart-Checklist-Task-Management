@@ -16,6 +16,7 @@ import { AuthModalComponent } from './components/auth-modal';
 import { PrintReportComponent } from './components/print-report';
 import { MapsView } from './components/maps-view';
 import { WorkspaceModal } from './components/workspace-modal';
+import { GoogleSheetImportModalComponent } from './components/google-sheet-import-modal';
 import { I18nService } from './services/i18n.service';
 import { StorageService } from './services/storage.service';
 import { AuthService } from './services/auth.service';
@@ -44,6 +45,7 @@ type ActiveTab = 'checklist' | 'calendar' | 'analytics' | 'chat' | 'maps';
     ProjectModalComponent,
     AuthModalComponent,
     PrintReportComponent,
+    GoogleSheetImportModalComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -72,9 +74,14 @@ export class App {
   showAuthModal = signal<boolean>(false);
   showPrintReport = signal<boolean>(false);
   showWorkspaceModal = signal<boolean>(false);
+  showGoogleSheetImportModal = signal<boolean>(false);
 
   openWorkspace() {
     this.showWorkspaceModal.set(true);
+  }
+
+  openGoogleSheetImport() {
+    this.showGoogleSheetImportModal.set(true);
   }
 
   onMapItemUpdated(item: ChecklistItem) {
