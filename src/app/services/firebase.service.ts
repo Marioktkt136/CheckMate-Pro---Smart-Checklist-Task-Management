@@ -86,6 +86,9 @@ export class FirebaseService {
     }
   }
 
+  readonly googleAuthEmail = signal<string | null>(null);
+  readonly googleAuthDisplayName = signal<string | null>(null);
+
   async signInWithGoogle(): Promise<string | null> {
     this.isAuthenticating.set(true);
     try {
@@ -96,6 +99,36 @@ export class FirebaseService {
         this.userToken.set(token);
       }
       this.currentUser.set(result.user);
+
+      // Extract email and displayName from User, providerData, _tokenResponse, or idToken JWT
+      const tokenResp = (result as { _tokenResponse?: { email?: string; fullName?: string; displayName?: string } })._tokenResponse;
+      let resolvedEmail =
+        result.user?.email ||
+        result.user?.providerData?.find(p => p?.email)?.email ||
+        tokenResp?.email ||
+        null;
+      let resolvedName =
+        result.user?.displayName ||
+        result.user?.providerData?.find(p => p?.displayName)?.displayName ||
+        tokenResp?.fullName ||
+        tokenResp?.displayName ||
+        null;
+
+      if ((!resolvedEmail || !resolvedName) && credential?.idToken) {
+        try {
+          const parts = credential.idToken.split('.');
+          if (parts.length >= 2) {
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            if (!resolvedEmail && payload.email) resolvedEmail = String(payload.email);
+            if (!resolvedName && payload.name) resolvedName = String(payload.name);
+          }
+        } catch {
+          // Ignore JWT decode fallback error
+        }
+      }
+
+      this.googleAuthEmail.set(resolvedEmail);
+      this.googleAuthDisplayName.set(resolvedName);
       return token;
     } catch (err) {
       console.warn('Google Sign-In popup note:', err);

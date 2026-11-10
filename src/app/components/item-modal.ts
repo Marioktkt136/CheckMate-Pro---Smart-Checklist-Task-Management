@@ -296,7 +296,7 @@ import { ChecklistItem, ItemPriority, ItemStatus } from '../core/checklist-rules
             </button>
             <button
               type="submit"
-              [disabled]="form.invalid"
+              [disabled]="!isFormValid()"
               class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 disabled:opacity-40 transition cursor-pointer flex items-center gap-1.5"
             >
               <mat-icon class="!text-sm !w-4 !h-4">save</mat-icon>
@@ -329,7 +329,7 @@ export class ItemModalComponent implements OnInit {
 
   form = new FormGroup({
     category: new FormControl('', [Validators.required]),
-    titleAr: new FormControl('', [Validators.required]),
+    titleAr: new FormControl(''),
     titleEn: new FormControl(''),
     notes: new FormControl(''),
     myNotes: new FormControl(''),
@@ -342,6 +342,13 @@ export class ItemModalComponent implements OnInit {
     storeLocation: new FormControl(''),
     newComment: new FormControl(''),
   });
+
+  isFormValid(): boolean {
+    const ar = (this.form.value.titleAr || '').trim();
+    const en = (this.form.value.titleEn || '').trim();
+    const cat = (this.form.value.category || '').trim();
+    return (ar.length > 0 || en.length > 0) && cat.length > 0;
+  }
 
   ngOnInit() {
     const it = this.item();
@@ -362,7 +369,7 @@ export class ItemModalComponent implements OnInit {
         storeLocation: it.storeLocation || it.storeName || '',
       });
     } else {
-      const firstCat = this.availableCategories()[0] || '';
+      const firstCat = this.availableCategories()[0] || (this.i18n.isRtl() ? 'الأجهزة الأساسية' : 'Essential Appliances');
       this.form.patchValue({
         category: firstCat,
       });
@@ -385,7 +392,7 @@ export class ItemModalComponent implements OnInit {
   }
 
   onSubmit() {
-    if (this.form.invalid) return;
+    if (!this.isFormValid()) return;
     const v = this.form.value;
 
     // If user typed a comment in newComment field without clicking addInlineComment, include it
@@ -396,14 +403,16 @@ export class ItemModalComponent implements OnInit {
 
     const rawTags = (v.tagsString || '').split(',').map(s => s.trim()).filter(Boolean);
     const storeLoc = (v.storeLocation || '').trim();
+    const ar = (v.titleAr || '').trim();
+    const en = (v.titleEn || '').trim();
 
     const it = this.item();
     if (it) {
       this.storage.updateItem({
         ...it,
         category: v.category || it.category,
-        titleAr: v.titleAr || it.titleAr,
-        titleEn: v.titleEn || it.titleEn,
+        titleAr: ar || en || it.titleAr,
+        titleEn: en || ar || it.titleEn,
         notes: v.notes || '',
         myNotes: v.myNotes || '',
         status: (v.status as ItemStatus) || it.status,
@@ -417,11 +426,21 @@ export class ItemModalComponent implements OnInit {
         comments: this.localComments(),
       });
     } else {
+      // Ensure an active project exists before adding an item
+      if (this.storage.projects().length === 0 || !this.storage.activeProjectId()) {
+        this.storage.addProject({
+          nameAr: 'مشروع التجهيز الرئيسي',
+          nameEn: 'Main Preparation Project',
+          budget: 150000,
+          icon: 'folder',
+          color: '#3b82f6',
+        });
+      }
       this.storage.addItem({
         folderId: this.storage.activeProjectId(),
         category: v.category || 'الأجهزة الأساسية',
-        titleAr: v.titleAr || '',
-        titleEn: v.titleEn || v.titleAr || '',
+        titleAr: ar || en,
+        titleEn: en || ar,
         notes: v.notes || '',
         myNotes: v.myNotes || '',
         status: (v.status as ItemStatus) || 'pending',

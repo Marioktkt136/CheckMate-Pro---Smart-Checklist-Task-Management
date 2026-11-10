@@ -636,8 +636,28 @@ const CATEGORY_EN_MAP: Record<string, string> = {
             {{ i18n.isRtl() ? 'لا توجد أصناف في هذا المشروع حالياً' : 'No items found in this project' }}
           </h3>
           <p class="text-xs text-slate-400 mt-1">
-            {{ i18n.isRtl() ? 'أضف صنفاً جديداً لحسابك أو قم باستيراد جدول Google Sheets.' : 'Add a new item to your account or import a Google Sheet.' }}
+            {{ i18n.isRtl() ? 'أنشئ مشروعاً جديداً أو أضف صنفاً جديداً لحسابك أو قم باستيراد جدول Google Sheets.' : 'Create a new project, add a new item, or import a Google Sheet.' }}
           </p>
+          <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              (click)="openNewProjectModal.emit()"
+              class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+            >
+              <mat-icon class="!text-sm !w-4 !h-4">create_new_folder</mat-icon>
+              <span>{{ i18n.t().newProject }}</span>
+            </button>
+            @if (auth.isEditor()) {
+              <button
+                type="button"
+                (click)="addItemTrigger.emit()"
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+              >
+                <mat-icon class="!text-sm !w-4 !h-4">add</mat-icon>
+                <span>{{ i18n.t().addItem }}</span>
+              </button>
+            }
+          </div>
         </div>
       }
 
@@ -661,6 +681,7 @@ export class ChecklistViewComponent {
   openCommentsTrigger = output<ChecklistItem>();
   openAttachmentsTrigger = output<ChecklistItem>();
   openGoogleSheetImport = output<void>();
+  openNewProjectModal = output<void>();
 
   categories = computed(() => {
     const set = new Set<string>(this.storage.categories());

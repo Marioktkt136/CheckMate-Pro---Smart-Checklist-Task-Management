@@ -221,6 +221,83 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
               <span>{{ i18n.t().continueWithGoogle }}</span>
             </button>
 
+            @if (showGoogleChooser()) {
+              <div class="p-3.5 rounded-xl border border-blue-200 dark:border-blue-800/80 bg-blue-50/50 dark:bg-slate-800/90 space-y-3 animate-in fade-in duration-150">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-100">
+                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 6.8 2.5 2.5 6.8 2.5 12s4.3 9.5 9.5 9.5c5.5 0 9.1-3.9 9.1-9.3 0-.6-.1-1.1-.2-1.6H12z"/>
+                      <path fill="#34A853" d="M3.6 7.4l3.2 2.4C7.7 7.6 9.7 6 12 6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 8.3 2.5 5.1 4.6 3.6 7.4z"/>
+                      <path fill="#FBBC05" d="M12 21.5c2.5 0 4.7-.8 6.3-2.3l-2.9-2.4c-.8.6-1.9 1-3.4 1-2.6 0-4.9-1.8-5.7-4.2l-3.2 2.5c1.5 3.1 4.9 5.4 8.9 5.4z"/>
+                      <path fill="#4285F4" d="M21.1 12.2c0-.6-.1-1.1-.2-1.6H12v3.9h5.5c-.3 1.4-1.1 2.5-2.1 3.2l2.9 2.4c1.7-1.6 2.8-4 2.8-7.9z"/>
+                    </svg>
+                    <span>
+                      {{ currentTab() === 'create'
+                        ? (i18n.isRtl() ? 'التسجيل باستخدام حساب Google' : 'Sign Up with Google Account')
+                        : (i18n.isRtl() ? 'اختر حساب Google للمتابعة' : 'Choose a Google Account to Continue') }}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="showGoogleChooser.set(false)"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-pointer"
+                  >
+                    <mat-icon class="!text-base !w-4 !h-4">close</mat-icon>
+                  </button>
+                </div>
+
+                @if (currentTab() === 'signin' && auth.users().length > 0) {
+                  <div class="space-y-1.5">
+                    @for (acc of auth.users(); track acc.id) {
+                      <button
+                        type="button"
+                        (click)="onSelectGoogleAccount(acc)"
+                        class="w-full p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 flex items-center justify-between gap-2 text-start transition cursor-pointer"
+                      >
+                        <div class="flex items-center gap-2.5 min-w-0">
+                          <span class="text-base shrink-0">{{ acc.avatar }}</span>
+                          <div class="min-w-0">
+                            <div class="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                              {{ i18n.isRtl() ? acc.name : acc.nameEn }}
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                              {{ acc.email }}
+                            </div>
+                          </div>
+                        </div>
+                        <mat-icon class="!text-sm !w-4 !h-4 text-blue-600 shrink-0">arrow_forward</mat-icon>
+                      </button>
+                    }
+                  </div>
+                }
+
+                <div class="space-y-2 pt-1 border-t border-slate-200/70 dark:border-slate-700/70">
+                  <input
+                    type="email"
+                    [formControl]="googleEmailControl"
+                    [placeholder]="i18n.isRtl() ? 'أدخل بريد Google (مثال: name@gmail.com)' : 'Enter Google email (e.g. name@gmail.com)'"
+                    class="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  @if (currentTab() === 'create') {
+                    <input
+                      type="text"
+                      [formControl]="googleNameControl"
+                      [placeholder]="i18n.isRtl() ? 'الاسم الكامل (اختياري)' : 'Full Name (optional)'"
+                      class="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  }
+                  <button
+                    type="button"
+                    (click)="onSubmitGoogleChooserEmail()"
+                    class="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <mat-icon class="!text-sm !w-4 !h-4">login</mat-icon>
+                    <span>{{ i18n.t().continueWithGoogle }}</span>
+                  </button>
+                </div>
+              </div>
+            }
+
             <!-- Divider -->
             <div class="relative flex items-center py-1">
               <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
@@ -549,6 +626,10 @@ export class AuthModalComponent {
 
   matchedWrongPassUser = signal<UserProfile | null>(null);
   showNotFoundSignUpHint = signal<boolean>(false);
+  showGoogleChooser = signal<boolean>(false);
+
+  googleEmailControl = new FormControl('');
+  googleNameControl = new FormControl('');
 
   signInForm = new FormGroup({
     identifier: new FormControl('', [Validators.required]),
@@ -569,6 +650,7 @@ export class AuthModalComponent {
     this.errorMessage.set('');
     this.matchedWrongPassUser.set(null);
     this.showNotFoundSignUpHint.set(false);
+    this.showGoogleChooser.set(false);
   }
 
   onSignUpEmailInput(event: Event) {
@@ -593,6 +675,20 @@ export class AuthModalComponent {
     }
 
     const mode = this.currentTab() === 'create' ? 'create' : 'signin';
+
+    // 1. If the user already typed an email/username in the active form, use it directly
+    const typedIdentifier =
+      mode === 'signin'
+        ? (this.signInForm.value.identifier || '').trim()
+        : (this.createUserForm.value.email || this.createUserForm.value.username || '').trim();
+    const typedName = mode === 'create' ? (this.createUserForm.value.name || '').trim() : '';
+
+    if (typedIdentifier) {
+      await this.completeGoogleAuthWithEmail(typedIdentifier, typedName, mode);
+      return;
+    }
+
+    // 2. Try Firebase Google Popup
     const result = await this.auth.signInWithGoogleProvider(mode);
     if (result.success && result.user) {
       if (result.isNewUser) {
@@ -600,6 +696,7 @@ export class AuthModalComponent {
       } else {
         await this.storage.loadUserWorkspace(result.user.id);
       }
+      this.showGoogleChooser.set(false);
       this.closeModal.emit();
       return;
     }
@@ -610,11 +707,60 @@ export class AuthModalComponent {
       return;
     }
 
-    this.errorMessage.set(
-      this.i18n.isRtl()
-        ? 'تعذر إكمال تسجيل الدخول بنافذة Google المنبثقة. يمكنك تسجيل الدخول أو إنشاء حساب مباشرة باسم المستخدم / البريد وكلمة المرور أدناه.'
-        : 'Google popup sign-in was cancelled or blocked. You can sign in or sign up directly with Username / Email & Password below.'
-    );
+    // 3. When popup is blocked or closed in the iframe environment, open the in-modal Google Account Chooser
+    await this.auth.syncUsersFromDatabase();
+    this.showGoogleChooser.set(true);
+  }
+
+  async onSelectGoogleAccount(acc: UserProfile) {
+    this.errorMessage.set('');
+    this.feedbackMessage.set('');
+    if (this.auth.isAuthenticated()) {
+      this.storage.flushPendingSync();
+    }
+    const mode = this.currentTab() === 'create' ? 'create' : 'signin';
+    await this.completeGoogleAuthWithEmail(acc.email || acc.username, acc.name, mode);
+  }
+
+  async onSubmitGoogleChooserEmail() {
+    const emailVal = (this.googleEmailControl.value || '').trim();
+    const nameVal = (this.googleNameControl.value || '').trim();
+    if (!emailVal) {
+      this.errorMessage.set(
+        this.i18n.isRtl()
+          ? 'يرجى إدخال البريد الإلكتروني لحساب Google.'
+          : 'Please enter your Google email address.'
+      );
+      return;
+    }
+    const mode = this.currentTab() === 'create' ? 'create' : 'signin';
+    await this.completeGoogleAuthWithEmail(emailVal, nameVal, mode);
+  }
+
+  private async completeGoogleAuthWithEmail(
+    emailOrId: string,
+    displayName: string,
+    mode: 'signin' | 'create'
+  ) {
+    const res = await this.auth.signInWithGoogleEmail(emailOrId, displayName, mode);
+    if (res.success && res.user) {
+      if (res.isNewUser) {
+        this.storage.resetWorkspaceForNewUser(res.user.id);
+      } else {
+        await this.storage.loadUserWorkspace(res.user.id);
+      }
+      this.showGoogleChooser.set(false);
+      this.googleEmailControl.setValue('');
+      this.googleNameControl.setValue('');
+      this.closeModal.emit();
+      return;
+    }
+
+    if (res.errorCode === 'account_not_found') {
+      this.signInForm.patchValue({ identifier: emailOrId });
+      this.showNotFoundSignUpHint.set(true);
+      this.errorMessage.set(this.i18n.t().googleAccountNotFoundError);
+    }
   }
 
   async onSignInSubmit() {

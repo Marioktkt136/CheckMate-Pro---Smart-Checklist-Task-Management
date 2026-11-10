@@ -508,6 +508,12 @@ export class StorageService {
   private unsubscribeUserWorkspace: (() => void) | null = null;
   private activeLoadedUserId = '';
   private firestoreWriteTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastLocalMutationAt = 0;
+  private isWritingToCloud = false;
+
+  private recordLocalMutation() {
+    this.lastLocalMutationAt = Date.now();
+  }
 
   unreadNotificationsCount = computed(() => {
     return this.notifications().filter(n => !n.read).length;
@@ -580,6 +586,7 @@ export class StorageService {
           this.flushPendingSync(this.activeLoadedUserId);
         }
         this.activeLoadedUserId = user.id;
+        this.lastLocalMutationAt = 0;
         void this.loadUserWorkspace(user.id);
       }
     });
@@ -601,9 +608,12 @@ export class StorageService {
     this.applyUiOptions(empty.uiOptions, false);
 
     this.activeLoadedUserId = userId;
+    this.recordLocalMutation();
     this.saveToLocalCacheOnly(userId);
-    this.auth.updateUserUiOptions(userId, empty.uiOptions);
-    void this.firebase.saveUserWorkspace(userId, empty, true);
+    this.isWritingToCloud = true;
+    void this.firebase.saveUserWorkspace(userId, this.buildCurrentWorkspacePayload(), true).finally(() => {
+      this.isWritingToCloud = false;
+    });
     this.hasPendingSync.set(false);
     this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   }
@@ -638,6 +648,13 @@ export class StorageService {
     if (data.uiOptions) {
       this.applyUiOptions(data.uiOptions, false);
       applied = true;
+    } else if (Array.isArray(data.projects)) {
+      // Ensure activeProjectId matches a valid project if projects exist
+      if (data.projects.length === 0) {
+        this.activeProjectId.set('');
+      } else if (!data.projects.some(p => p.id === this.activeProjectId())) {
+        this.activeProjectId.set(data.projects[0].id);
+      }
     }
 
     if (applied) {
@@ -702,19 +719,29 @@ export class StorageService {
     // 3. Explicitly fetch latest user workspace & UI options from Firestore database upon Sign-In / Switch
     const cloudRecord = await this.firebase.fetchUserWorkspaceFromFirestore(userId);
     if (cloudRecord && this.activeLoadedUserId === userId) {
-      const updated = this.applyWorkspaceSnapshot(userId, cloudRecord);
-      if (updated) {
-        this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        this.hasPendingSync.set(false);
-      } else if (!this.isSeededDemoAccount(userId)) {
-        // Ensure Firestore has the clean empty state if record had no workspace fields yet
-        void this.firebase.saveUserWorkspace(userId, this.buildCurrentWorkspacePayload(), true);
+      const cloudTime = cloudRecord.updatedAt ? Date.parse(cloudRecord.updatedAt) : 0;
+      const localIsNewer = this.lastLocalMutationAt > 0 && cloudTime > 0 && cloudTime < this.lastLocalMutationAt;
+      if (!localIsNewer && !this.isWritingToCloud && this.firestoreWriteTimer === null) {
+        const updated = this.applyWorkspaceSnapshot(userId, cloudRecord);
+        if (updated) {
+          this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+          this.hasPendingSync.set(false);
+        } else if (!this.isSeededDemoAccount(userId)) {
+          void this.firebase.saveUserWorkspace(userId, this.buildCurrentWorkspacePayload(), true);
+        }
       }
     }
 
     // 4. Subscribe to Firestore `users/{userId}` real-time updates
     this.unsubscribeUserWorkspace = this.firebase.listenToUserWorkspace(userId, (cloudData) => {
       if (this.activeLoadedUserId !== userId) return;
+      if (this.isWritingToCloud || this.firestoreWriteTimer !== null) return;
+      if (this.lastLocalMutationAt > 0 && cloudData.updatedAt) {
+        const cloudTime = Date.parse(cloudData.updatedAt);
+        if (!isNaN(cloudTime) && cloudTime < this.lastLocalMutationAt) {
+          return;
+        }
+      }
       const updatedFromCloud = this.applyWorkspaceSnapshot(userId, cloudData);
       if (updatedFromCloud) {
         this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -740,13 +767,13 @@ export class StorageService {
       this.i18n.setLanguage(normalized.language);
     }
 
-    // 3. Apply Active Project ID (supports "" when no project is active)
-    if (normalized.activeProjectId === '') {
-      this.activeProjectId.set('');
-    } else if (this.projects().some(p => p.id === normalized.activeProjectId)) {
+    // 3. Apply Active Project ID (supports "" when no project is active, or auto-selects first project when projects exist)
+    if (normalized.activeProjectId && this.projects().some(p => p.id === normalized.activeProjectId)) {
       this.activeProjectId.set(normalized.activeProjectId);
+    } else if (this.projects().length > 0) {
+      this.activeProjectId.set(this.projects()[0].id);
     } else {
-      this.activeProjectId.set(this.projects()[0]?.id || '');
+      this.activeProjectId.set('');
     }
 
     const userId = this.auth.currentUser()?.id;
@@ -754,9 +781,7 @@ export class StorageService {
       const finalUiOptions = this.getCurrentUiOptions();
       this.auth.updateUserUiOptions(userId, finalUiOptions);
       if (persistToDb) {
-        this.saveToLocalCacheOnly(userId);
-        void this.firebase.saveUiOptionsToFirestore(userId, finalUiOptions);
-        this.persistUserWorkspace();
+        this.flushPendingSync(userId);
       }
     }
   }
@@ -770,6 +795,10 @@ export class StorageService {
   }
 
   private buildCurrentWorkspacePayload(): CloudUserWorkspace {
+    const ts =
+      this.lastLocalMutationAt > 0
+        ? new Date(this.lastLocalMutationAt).toISOString()
+        : new Date().toISOString();
     return {
       projects: this.projects(),
       items: this.items(),
@@ -778,7 +807,7 @@ export class StorageService {
       uiOptions: this.getCurrentUiOptions(),
       aiChats: this.chatMessages(),
       mapLocations: this.mapLocations(),
-      updatedAt: new Date().toISOString(),
+      updatedAt: ts,
     };
   }
 
@@ -786,11 +815,12 @@ export class StorageService {
     if (typeof window === 'undefined' || !window.localStorage || !userId) return;
     const payload = this.buildCurrentWorkspacePayload();
     localStorage.setItem(this.getUserCacheKey(userId), JSON.stringify(payload));
+    this.auth.updateUserWorkspaceSnapshot(userId, payload);
   }
 
   /**
    * Immediately flushes any pending workspace or UI Option changes to localStorage and Firestore
-   * before signing out or switching accounts.
+   * before signing out, switching accounts, or after project/UI option changes.
    */
   flushPendingSync(targetUserId?: string) {
     const userId = targetUserId || this.activeLoadedUserId || this.auth.currentUser()?.id;
@@ -801,24 +831,25 @@ export class StorageService {
       this.firestoreWriteTimer = null;
     }
 
-    const uiOpts = this.getCurrentUiOptions();
-    this.auth.updateUserUiOptions(userId, uiOpts);
+    this.recordLocalMutation();
     this.saveToLocalCacheOnly(userId);
     const payload = this.buildCurrentWorkspacePayload();
-    void this.firebase.saveUserWorkspace(userId, payload, true);
+    this.isWritingToCloud = true;
+    void this.firebase.saveUserWorkspace(userId, payload, true).finally(() => {
+      this.isWritingToCloud = false;
+    });
     this.hasPendingSync.set(false);
     this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   }
 
   /**
-   * Saves immediately to localStorage and debounces Firestore write (400ms) to avoid rate limit spikes.
+   * Saves immediately to localStorage and debounces Firestore write (350ms) to avoid rate limit spikes.
    */
   persistUserWorkspace() {
     const userId = this.auth.currentUser()?.id;
     if (!userId) return;
 
-    const uiOpts = this.getCurrentUiOptions();
-    this.auth.updateUserUiOptions(userId, uiOpts);
+    this.recordLocalMutation();
     this.saveToLocalCacheOnly(userId);
 
     if (this.firestoreWriteTimer) {
@@ -828,10 +859,13 @@ export class StorageService {
     this.firestoreWriteTimer = setTimeout(() => {
       this.firestoreWriteTimer = null;
       const payload = this.buildCurrentWorkspacePayload();
-      void this.firebase.saveUserWorkspace(userId, payload);
+      this.isWritingToCloud = true;
+      void this.firebase.saveUserWorkspace(userId, payload).finally(() => {
+        this.isWritingToCloud = false;
+      });
       this.hasPendingSync.set(false);
       this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    }, 400);
+    }, 350);
   }
 
   toggleDarkMode() {
@@ -841,46 +875,22 @@ export class StorageService {
       document.documentElement.classList.toggle('dark', next);
       localStorage.setItem('checkmate_dark', String(next));
     }
-    const userId = this.auth.currentUser()?.id;
-    if (userId) {
-      const uiOpts = this.getCurrentUiOptions();
-      this.auth.updateUserUiOptions(userId, uiOpts);
-      void this.firebase.saveUiOptionsToFirestore(userId, uiOpts);
-    }
-    this.persistUserWorkspace();
+    this.flushPendingSync();
   }
 
   toggleLanguage() {
     this.i18n.toggleLanguage();
-    const userId = this.auth.currentUser()?.id;
-    if (userId) {
-      const uiOpts = this.getCurrentUiOptions();
-      this.auth.updateUserUiOptions(userId, uiOpts);
-      void this.firebase.saveUiOptionsToFirestore(userId, uiOpts);
-    }
-    this.persistUserWorkspace();
+    this.flushPendingSync();
   }
 
   setLanguage(lang: Language) {
     this.i18n.setLanguage(lang);
-    const userId = this.auth.currentUser()?.id;
-    if (userId) {
-      const uiOpts = this.getCurrentUiOptions();
-      this.auth.updateUserUiOptions(userId, uiOpts);
-      void this.firebase.saveUiOptionsToFirestore(userId, uiOpts);
-    }
-    this.persistUserWorkspace();
+    this.flushPendingSync();
   }
 
   selectProject(projectId: string) {
     this.activeProjectId.set(projectId || '');
-    const userId = this.auth.currentUser()?.id;
-    if (userId) {
-      const uiOpts = this.getCurrentUiOptions();
-      this.auth.updateUserUiOptions(userId, uiOpts);
-      void this.firebase.saveUiOptionsToFirestore(userId, uiOpts);
-    }
-    this.persistUserWorkspace();
+    this.flushPendingSync();
   }
 
   addCategory(cat: string) {
@@ -1027,11 +1037,19 @@ export class StorageService {
     this.persistUserWorkspace();
   }
 
-  addProject(project: Omit<ProjectFolder, 'id'>) {
+  addProject(project: Omit<ProjectFolder, 'id'>): ProjectFolder {
+    const currentUserId = this.auth.currentUser()?.id || 'u1';
+    const cleanNameAr = (project.nameAr || project.nameEn || 'مشروع جديد').trim();
+    const cleanNameEn = (project.nameEn || project.nameAr || 'New Project').trim();
     const newProject: ProjectFolder = {
       ...project,
+      nameAr: cleanNameAr,
+      nameEn: cleanNameEn,
+      budget: Number(project.budget) || 0,
+      icon: project.icon || 'folder',
+      color: project.color || '#3b82f6',
       id: 'proj-' + Date.now(),
-      ownerId: this.auth.currentUser().id,
+      ownerId: currentUserId,
     };
     const wasNoProject = !this.activeProjectId() || this.projects().length === 0;
     this.projects.update(prev => [...prev, newProject]);
@@ -1041,18 +1059,18 @@ export class StorageService {
         prev.map(it => (!it.folderId ? { ...it, folderId: newProject.id } : it))
       );
     }
-    this.selectProject(newProject.id);
-    this.hasPendingSync.set(true);
-    this.persistUserWorkspace();
+    this.activeProjectId.set(newProject.id);
+    this.flushPendingSync(currentUserId);
+    return newProject;
   }
 
   deleteProject(id: string) {
+    const currentUserId = this.auth.currentUser()?.id || 'u1';
     this.projects.update(prev => prev.filter(p => p.id !== id));
     this.items.update(prev => prev.filter(item => item.folderId !== id));
     const remaining = this.projects();
-    this.selectProject(remaining[0]?.id || '');
-    this.hasPendingSync.set(true);
-    this.persistUserWorkspace();
+    this.activeProjectId.set(remaining[0]?.id || '');
+    this.flushPendingSync(currentUserId);
   }
 
   addComment(itemId: string, text: string, userName: string, avatar = '👤') {

@@ -16,6 +16,7 @@
     <app-dashboard-stats
       (openNewItemModal)="openAddItem()"
       (openAiAdvisorModal)="openConsultAi(null)"
+      (openNewProjectModal)="openNewProject()"
     ></app-dashboard-stats>
 
     <!-- Main Navigation Tabs -->
@@ -124,6 +125,7 @@
         (openCommentsTrigger)="openComments($event)"
         (openAttachmentsTrigger)="openAttachments($event)"
         (openGoogleSheetImport)="openGoogleSheetImport()"
+        (openNewProjectModal)="openNewProject()"
       ></app-checklist-view>
     }
 

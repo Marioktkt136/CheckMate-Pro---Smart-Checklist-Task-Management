@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { I18nService } from '../services/i18n.service';
 import { StorageService } from '../services/storage.service';
@@ -37,7 +37,7 @@ import { StorageService } from '../services/storage.service';
           
           <div>
             <label for="proj-name-ar" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {{ i18n.isRtl() ? 'اسم المجلد / المشروع (العربية) *' : 'Project / Folder Name (Arabic) *' }}
+              {{ i18n.isRtl() ? 'اسم المجلد / المشروع (العربية) *' : 'Project / Folder Name (Arabic)' }}
             </label>
             <input
               id="proj-name-ar"
@@ -50,7 +50,7 @@ import { StorageService } from '../services/storage.service';
 
           <div>
             <label for="proj-name-en" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {{ i18n.isRtl() ? 'اسم المشروع (English)' : 'Project Name (English)' }}
+              {{ i18n.isRtl() ? 'اسم المشروع (English)' : 'Project Name (English) *' }}
             </label>
             <input
               id="proj-name-en"
@@ -110,6 +110,36 @@ import { StorageService } from '../services/storage.service';
             </div>
           </div>
 
+          @if (storage.projects().length > 0) {
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2">
+                {{ i18n.isRtl() ? 'المشاريع الحالية' : 'Current Projects' }} ({{ storage.projects().length }})
+              </div>
+              <div class="max-h-32 overflow-y-auto space-y-1.5 pr-1">
+                @for (proj of storage.projects(); track proj.id) {
+                  <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/70 text-xs">
+                    <button
+                      type="button"
+                      (click)="onSelectExistingProject(proj.id)"
+                      class="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-200 hover:text-blue-600 cursor-pointer truncate text-start flex-1"
+                    >
+                      <mat-icon class="!text-sm !w-4 !h-4" [style.color]="proj.color">{{ proj.icon }}</mat-icon>
+                      <span class="truncate">{{ i18n.isRtl() ? proj.nameAr : proj.nameEn }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="storage.deleteProject(proj.id)"
+                      class="p-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer shrink-0"
+                      [title]="i18n.isRtl() ? 'حذف المشروع' : 'Delete Project'"
+                    >
+                      <mat-icon class="!text-sm !w-4 !h-4">delete_outline</mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
           <!-- Actions -->
           <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button
@@ -121,7 +151,7 @@ import { StorageService } from '../services/storage.service';
             </button>
             <button
               type="submit"
-              [disabled]="folderForm.invalid"
+              [disabled]="!hasProjectName()"
               class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 disabled:opacity-40 transition cursor-pointer flex items-center gap-1"
             >
               <mat-icon class="text-sm">add</mat-icon>
@@ -142,19 +172,32 @@ export class ProjectModalComponent {
   closeModal = output<void>();
 
   folderForm = new FormGroup({
-    nameAr: new FormControl('', [Validators.required]),
+    nameAr: new FormControl(''),
     nameEn: new FormControl(''),
     budget: new FormControl(50000),
     icon: new FormControl('folder'),
     color: new FormControl('#3b82f6'),
   });
 
+  hasProjectName(): boolean {
+    const ar = (this.folderForm.value.nameAr || '').trim();
+    const en = (this.folderForm.value.nameEn || '').trim();
+    return ar.length > 0 || en.length > 0;
+  }
+
+  onSelectExistingProject(id: string) {
+    this.storage.selectProject(id);
+    this.closeModal.emit();
+  }
+
   onSubmit() {
-    if (this.folderForm.invalid) return;
+    if (!this.hasProjectName()) return;
     const v = this.folderForm.value;
+    const ar = (v.nameAr || '').trim();
+    const en = (v.nameEn || '').trim();
     this.storage.addProject({
-      nameAr: v.nameAr || 'مشروع جديد',
-      nameEn: v.nameEn || v.nameAr || 'New Project',
+      nameAr: ar || en || 'مشروع جديد',
+      nameEn: en || ar || 'New Project',
       budget: Number(v.budget) || 0,
       icon: v.icon || 'folder',
       color: v.color || '#3b82f6',

@@ -19,10 +19,20 @@ import { calculateChecklistStats } from '../core/checklist-rules';
         <div class="absolute left-1/3 -top-12 w-48 h-48 rounded-full bg-indigo-500/10 blur-xl pointer-events-none"></div>
 
         <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div class="space-y-1.5 max-w-2xl">
-            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-blue-200 text-xs font-semibold backdrop-blur-sm">
-              <mat-icon class="text-sm">verified</mat-icon>
-              <span>{{ i18n.t().checklist }} - {{ i18n.isRtl() ? storage.activeProject().nameAr : storage.activeProject().nameEn }}</span>
+          <div class="space-y-2 max-w-2xl">
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-blue-200 text-xs font-semibold backdrop-blur-sm">
+                <mat-icon class="text-sm">verified</mat-icon>
+                <span>{{ i18n.t().checklist }} - {{ i18n.isRtl() ? storage.activeProject().nameAr : storage.activeProject().nameEn }}</span>
+              </div>
+              <button
+                type="button"
+                (click)="openNewProjectModal.emit()"
+                class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white text-blue-700 hover:bg-blue-50 text-xs font-bold shadow-sm transition cursor-pointer"
+              >
+                <mat-icon class="!text-sm !w-4 !h-4">create_new_folder</mat-icon>
+                <span>{{ i18n.t().newProject }}</span>
+              </button>
             </div>
             <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
               {{ i18n.isRtl() ? storage.activeProject().nameAr : storage.activeProject().nameEn }}
@@ -142,6 +152,7 @@ export class DashboardStatsComponent {
 
   openNewItemModal = output<void>();
   openAiAdvisorModal = output<void>();
+  openNewProjectModal = output<void>();
 
   stats = computed(() => {
     const items = this.storage.currentProjectItems();

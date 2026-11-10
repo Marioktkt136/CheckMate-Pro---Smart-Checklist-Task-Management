@@ -55,9 +55,10 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true,
+              "sourceMap": false,
               "externalDependencies": [
                 "@google/genai",
+                "express",
                 "node-domexception",
                 "fetch-blob"
               ]
@@ -67,6 +68,11 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "port": 3000,
+            "host": "0.0.0.0",
+            "allowedHosts": true
+          },
           "configurations": {
             "production": {
               "buildTarget": "app:build:production"

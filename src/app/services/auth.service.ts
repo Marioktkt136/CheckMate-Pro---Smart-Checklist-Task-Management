@@ -196,9 +196,26 @@ export class AuthService {
               ? generateSecureRandomPassword(24)
               : 'password123';
 
+        const existingIsNewer =
+          Boolean(existing?.updatedAt && u.updatedAt && existing.updatedAt > u.updatedAt);
+
         return {
           ...existing,
           ...u,
+          ...(existingIsNewer
+            ? {
+                projects: existing?.projects,
+                items: existing?.items,
+                categories: existing?.categories,
+                notifications: existing?.notifications,
+                aiChats: existing?.aiChats,
+                mapLocations: existing?.mapLocations,
+                uiOptions: existing?.uiOptions,
+                updatedAt: existing?.updatedAt,
+              }
+            : {
+                uiOptions: u.uiOptions ? normalizeUiOptions(u.uiOptions) : existing?.uiOptions,
+              }),
           id: u.id,
           name: u.name || existing?.name || u.email.split('@')[0],
           nameEn: u.nameEn || u.name || existing?.nameEn || u.email.split('@')[0],
@@ -209,7 +226,6 @@ export class AuthService {
           avatar: u.avatar || existing?.avatar || '👤',
           department: u.department || existing?.department || 'فريق العمل',
           provider: isGoogle ? 'google' : 'email',
-          uiOptions: u.uiOptions ? normalizeUiOptions(u.uiOptions) : existing?.uiOptions,
         };
       });
 
@@ -521,35 +537,68 @@ export class AuthService {
     try {
       await this.firebase.signInWithGoogle();
       const fbUser = this.firebase.currentUser();
-      if (fbUser && fbUser.email) {
-        await this.syncUsersFromDatabase();
-        const cleanEmail = fbUser.email.trim().toLowerCase();
-        const existing = this.findAccountInDatabase(cleanEmail);
+      const resolvedEmail =
+        this.firebase.googleAuthEmail() ||
+        fbUser?.email ||
+        fbUser?.providerData?.find(p => p?.email)?.email ||
+        '';
+      const resolvedName =
+        this.firebase.googleAuthDisplayName() ||
+        fbUser?.displayName ||
+        fbUser?.providerData?.find(p => p?.displayName)?.displayName ||
+        '';
 
-        if (mode === 'signin' && !existing) {
-          await this.firebase.signOut();
-          return {
-            success: false,
-            errorCode: 'account_not_found',
-          };
-        }
-
-        const isNewUser = !existing && mode === 'create';
-        const displayName = fbUser.displayName || fbUser.email.split('@')[0];
-        const user = this.completeGoogleSignIn(fbUser.email, displayName, 'admin', mode === 'create');
-        if (!user) {
-          return {
-            success: false,
-            errorCode: 'account_not_found',
-          };
-        }
-        return { success: true, user, isNewUser };
+      if (resolvedEmail) {
+        return await this.signInWithGoogleEmail(resolvedEmail, resolvedName, mode);
       }
       return { success: false, errorCode: 'no_user' };
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code || 'popup_error';
       return { success: false, errorCode: code };
     }
+  }
+
+  /**
+   * Completes Google Sign-In or Sign-Up for a verified Google email/identifier,
+   * checking Firestore database first when mode === 'signin'.
+   */
+  async signInWithGoogleEmail(
+    emailOrIdentifier: string,
+    displayName?: string,
+    mode: 'signin' | 'create' = 'signin'
+  ): Promise<{
+    success: boolean;
+    errorCode?: string;
+    user?: UserProfile;
+    isNewUser?: boolean;
+  }> {
+    const raw = (emailOrIdentifier || '').trim().toLowerCase().replace(/^@/, '');
+    if (!raw) {
+      return { success: false, errorCode: 'no_user' };
+    }
+
+    await this.syncUsersFromDatabase();
+    const existing = this.findAccountInDatabase(raw);
+
+    if (mode === 'signin' && !existing) {
+      await this.firebase.signOut();
+      return {
+        success: false,
+        errorCode: 'account_not_found',
+      };
+    }
+
+    const targetEmail = existing ? existing.email : raw.includes('@') ? raw : `${raw}@gmail.com`;
+    const isNewUser = !existing && mode === 'create';
+    const targetName = displayName || existing?.name || targetEmail.split('@')[0];
+    const user = this.completeGoogleSignIn(targetEmail, targetName, 'admin', mode === 'create');
+    if (!user) {
+      return {
+        success: false,
+        errorCode: 'account_not_found',
+      };
+    }
+    return { success: true, user, isNewUser };
   }
 
   /**
@@ -656,6 +705,25 @@ export class AuthService {
     this.persistUsers(updatedList);
     if (this.currentUser().id === userId) {
       this.currentUser.update(curr => ({ ...curr, uiOptions }));
+    }
+  }
+
+  updateUserWorkspaceSnapshot(userId: string, snapshot: Partial<UserProfile>) {
+    if (!userId) return;
+    const updatedList = this.users().map(u =>
+      u.id === userId
+        ? {
+            ...u,
+            ...snapshot,
+          }
+        : u
+    );
+    this.persistUsers(updatedList);
+    if (this.currentUser().id === userId) {
+      this.currentUser.update(curr => ({
+        ...curr,
+        ...snapshot,
+      }));
     }
   }
 
