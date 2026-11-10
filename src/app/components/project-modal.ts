@@ -37,26 +37,26 @@ import { StorageService } from '../services/storage.service';
           
           <div>
             <label for="proj-name-ar" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              اسم المجلد / المشروع (العربية) *
+              {{ i18n.isRtl() ? 'اسم المجلد / المشروع (العربية) *' : 'Project / Folder Name (Arabic) *' }}
             </label>
             <input
               id="proj-name-ar"
               type="text"
               formControlName="nameAr"
-              placeholder="مثال: تشطيبات الحمام والسباكة"
+              [placeholder]="i18n.isRtl() ? 'مثال: تشطيبات الحمام والسباكة' : 'e.g. تشطيبات الحمام والسباكة'"
               class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
             <label for="proj-name-en" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Project Name (English)
+              {{ i18n.isRtl() ? 'اسم المشروع (English)' : 'Project Name (English)' }}
             </label>
             <input
               id="proj-name-en"
               type="text"
               formControlName="nameEn"
-              placeholder="e.g. Bathroom & Plumbing Works"
+              [placeholder]="i18n.isRtl() ? 'مثال: Bathroom & Plumbing Works' : 'e.g. Bathroom & Plumbing Works'"
               class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -64,7 +64,7 @@ import { StorageService } from '../services/storage.service';
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label for="proj-budget" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                الميزانية المخصصة (ج.م)
+                {{ i18n.isRtl() ? 'الميزانية المخصصة (ج.م)' : 'Allocated Budget (ج.م)' }}
               </label>
               <input
                 id="proj-budget"
@@ -76,20 +76,20 @@ import { StorageService } from '../services/storage.service';
 
             <div>
               <label for="proj-icon" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                الأيقونة
+                {{ i18n.isRtl() ? 'الأيقونة' : 'Folder Icon' }}
               </label>
               <select
                 id="proj-icon"
                 formControlName="icon"
                 class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="folder">📁 مجلد عام (Folder)</option>
-                <option value="kitchen">🍳 مطبخ وأجهزة (Kitchen)</option>
-                <option value="weekend">🛋️ أثاث وصالون (Living)</option>
-                <option value="bed">🛏️ غرف نوم (Bedroom)</option>
-                <option value="plumbing">🚿 سباكة وصحي (Plumbing)</option>
-                <option value="format_paint">🎨 دهانات وديكور (Decor)</option>
-                <option value="devices">💻 إلكترونيات وشاشات (Electronics)</option>
+                <option value="folder">{{ i18n.isRtl() ? '📁 مجلد عام (Folder)' : '📁 General Folder' }}</option>
+                <option value="kitchen">{{ i18n.isRtl() ? '🍳 مطبخ وأجهزة (Kitchen)' : '🍳 Kitchen & Appliances' }}</option>
+                <option value="weekend">{{ i18n.isRtl() ? '🛋️ أثاث وصالون (Living)' : '🛋️ Furniture & Living' }}</option>
+                <option value="bed">{{ i18n.isRtl() ? '🛏️ غرف نوم (Bedroom)' : '🛏️ Bedrooms' }}</option>
+                <option value="plumbing">{{ i18n.isRtl() ? '🚿 سباكة وصحي (Plumbing)' : '🚿 Plumbing & Bath' }}</option>
+                <option value="format_paint">{{ i18n.isRtl() ? '🎨 دهانات وديكور (Decor)' : '🎨 Paint & Decor' }}</option>
+                <option value="devices">{{ i18n.isRtl() ? '💻 إلكترونيات وشاشات (Electronics)' : '💻 Electronics & Screens' }}</option>
               </select>
             </div>
           </div>
@@ -97,7 +97,7 @@ import { StorageService } from '../services/storage.service';
           <!-- Color selection -->
           <div>
             <label for="proj-color" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              لون المجلد
+              {{ i18n.isRtl() ? 'لون المجلد' : 'Folder Color' }}
             </label>
             <div class="flex items-center gap-3">
               <input
@@ -122,9 +122,10 @@ import { StorageService } from '../services/storage.service';
             <button
               type="submit"
               [disabled]="folderForm.invalid"
-              class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 disabled:opacity-40 transition cursor-pointer"
+              class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 disabled:opacity-40 transition cursor-pointer flex items-center gap-1"
             >
-              إنشاء المجلد
+              <mat-icon class="text-sm">add</mat-icon>
+              <span>{{ i18n.isRtl() ? 'إنشاء المجلد' : 'Create Project' }}</span>
             </button>
           </div>
 

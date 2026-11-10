@@ -1,5 +1,28 @@
 {
   "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account containing projects, items, categories, notifications, uiOptions, aiChats, and mapLocations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "avatar": { "type": "string" },
+        "provider": { "type": "string" },
+        "projects": { "type": "array" },
+        "items": { "type": "array" },
+        "categories": { "type": "array" },
+        "notifications": { "type": "array" },
+        "uiOptions": { "type": "object" },
+        "aiChats": { "type": "array" },
+        "mapLocations": { "type": "array" }
+      },
+      "required": ["id", "email"]
+    },
     "Project": {
       "title": "Project",
       "description": "A checklist category or folder of items",
@@ -11,17 +34,13 @@
         "icon": { "type": "string", "maxLength": 50 },
         "color": { "type": "string", "maxLength": 20 },
         "budget": { "type": "number" },
-        "descriptionAr": { "type": "string", "maxLength": 300 },
-        "descriptionEn": { "type": "string", "maxLength": 300 },
-        "ownerId": { "type": "string" },
-        "createdAt": { "type": "string" },
-        "updatedAt": { "type": "string" }
+        "ownerId": { "type": "string" }
       },
       "required": ["id", "nameAr", "budget"]
     },
     "ChecklistItem": {
       "title": "ChecklistItem",
-      "description": "An appliance or checklist item with status, price, notes, and store location",
+      "description": "An item with bilingual name, category, recommended specs, notes, comments, purchased status, priority, costs, target date, tags, and store location",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -32,16 +51,17 @@
         "titleEn": { "type": "string", "maxLength": 150 },
         "notes": { "type": "string", "maxLength": 500 },
         "myNotes": { "type": "string", "maxLength": 1000 },
-        "status": { "type": "string", "enum": ["pending", "comparing", "purchased", "postponed"] },
+        "comments": { "type": "array" },
+        "status": { "type": "string", "enum": ["pending", "comparing", "purchased", "delivered"] },
         "priority": { "type": "string", "enum": ["urgent", "high", "medium", "low"] },
         "estimatedCost": { "type": "number" },
         "actualCost": { "type": "number" },
         "currency": { "type": "string", "maxLength": 10 },
         "targetDate": { "type": "string", "maxLength": 20 },
+        "tags": { "type": "array" },
+        "storeLocation": { "type": "string", "maxLength": 250 },
         "storeName": { "type": "string", "maxLength": 150 },
         "storeAddress": { "type": "string", "maxLength": 250 },
-        "storeLat": { "type": "number" },
-        "storeLng": { "type": "number" },
         "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
@@ -49,6 +69,10 @@
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Per-user isolated database record containing projects, items, notifications, categories, uiOptions, aiChats, and mapLocations"
+    },
     "/projects/{projectId}": {
       "schema": "Project",
       "description": "Top-level checklist projects and folders"

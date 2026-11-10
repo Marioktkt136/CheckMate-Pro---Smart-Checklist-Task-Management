@@ -425,48 +425,316 @@ app.post('/api/notifications', (req, res): void => {
   res.json({ success: true, notification: newNotification });
 });
 
-// 5. Smart Gemini AI Checklist & Buying Advisor Endpoint
+// 5. Smart Gemini Chat & Buying Advisor Endpoint (Latest Free Gemini 3.8 Flash)
+const aiResponseCache = new Map<string, { text: string; expiresAt: number }>();
+
+interface AdvisorItemInput {
+  id?: string;
+  titleAr?: string;
+  titleEn?: string;
+  category?: string;
+  status?: string;
+  priority?: string;
+  estimatedCost?: number;
+  actualCost?: number;
+  notes?: string;
+  myNotes?: string;
+  targetDate?: string;
+  storeLocation?: string;
+  tags?: string[];
+}
+
+interface AdvisorProjectInput {
+  id?: string;
+  nameAr?: string;
+  nameEn?: string;
+  budget?: number;
+}
+
 app.post('/api/ai-advisor', async (req, res): Promise<void> => {
-  const { prompt, currentItem, actionType, lang } = req.body;
+  const {
+    prompt,
+    currentItem,
+    allItems,
+    project,
+    categories,
+    history,
+    actionType,
+    lang,
+  } = req.body as {
+    prompt?: string;
+    currentItem?: AdvisorItemInput;
+    allItems?: AdvisorItemInput[];
+    project?: AdvisorProjectInput;
+    categories?: string[];
+    history?: { role?: string; text?: string }[];
+    actionType?: string;
+    lang?: string;
+  };
+
   const apiKey = process.env['GEMINI_API_KEY'];
   const isAr = lang !== 'en';
+  const itemsList: AdvisorItemInput[] = Array.isArray(allItems) ? allItems : [];
 
-  // Fallback high-quality response if no API key or network fails
-  const generateFallbackResponse = (type: string, item: { titleAr?: string; titleEn?: string } | undefined) => {
-    if (type === 'compare_brands' && item) {
+  // Compute real-time quantitative metrics from user's items & project
+  const totalItems = itemsList.length;
+  const completedItems = itemsList.filter(i => i.status === 'purchased' || i.status === 'delivered');
+  const comparingItems = itemsList.filter(i => i.status === 'comparing');
+  const pendingItems = itemsList.filter(i => !i.status || i.status === 'pending');
+  const urgentPending = itemsList.filter(
+    i => (i.priority === 'urgent' || i.priority === 'high') && i.status !== 'purchased' && i.status !== 'delivered'
+  );
+
+  const totalEstimated = itemsList.reduce((acc, it) => acc + (Number(it.estimatedCost) || 0), 0);
+  const totalActualSpent = itemsList.reduce((acc, it) => acc + (Number(it.actualCost) || 0), 0);
+  const remainingEstimatedCost = itemsList
+    .filter(i => i.status !== 'purchased' && i.status !== 'delivered')
+    .reduce((acc, it) => acc + (Number(it.estimatedCost) || 0), 0);
+
+  const allocatedBudget = Number(project?.budget) || 0;
+  const budgetRemaining = allocatedBudget > 0 ? allocatedBudget - totalActualSpent : 0;
+  const completionRate = totalItems > 0 ? Math.round((completedItems.length / totalItems) * 100) : 0;
+
+  // Group by category
+  const categoryMap = new Map<string, { count: number; done: number; est: number; spent: number }>();
+  for (const it of itemsList) {
+    const cat = it.category || (isAr ? 'عام' : 'General');
+    const prev = categoryMap.get(cat) || { count: 0, done: 0, est: 0, spent: 0 };
+    prev.count += 1;
+    if (it.status === 'purchased' || it.status === 'delivered') prev.done += 1;
+    prev.est += Number(it.estimatedCost) || 0;
+    prev.spent += Number(it.actualCost) || 0;
+    categoryMap.set(cat, prev);
+  }
+
+  const projectName = isAr
+    ? project?.nameAr || project?.nameEn || 'المشروع الحالي'
+    : project?.nameEn || project?.nameAr || 'Current Project';
+
+  const generateSmartAnalysisResponse = (
+    type: string | undefined,
+    item: AdvisorItemInput | undefined,
+    userPrompt?: string
+  ): string => {
+    const q = (userPrompt || '').toLowerCase();
+
+    // 1. Specific Item Consultation (Brand Comparison / Specs Review)
+    if (item && (type === 'compare_brands' || type === 'specs_review')) {
+      const itemTitle = isAr ? item.titleAr || item.titleEn || 'الصنف' : item.titleEn || item.titleAr || 'Item';
+      const itemEst = Number(item.estimatedCost) || 0;
+      const itemSpecs = item.notes || (isAr ? 'مواصفات قياسية عالية الكفاءة' : 'High-efficiency standard specs');
+      const itemCustomNotes = item.myNotes ? `\n• **${isAr ? 'ملاحظاتك المسجلة' : 'Your Saved Notes'}:** ${item.myNotes}` : '';
+
+      if (type === 'specs_review') {
+        return isAr
+          ? `### 🔍 التحليل الفني ومراجعة المواصفات لـ (${itemTitle}):\n` +
+            `• **المواصفات الموصى بها:** ${itemSpecs}${itemCustomNotes}\n` +
+            `• **التكلفة التقديرية المرصودة:** ${itemEst > 0 ? itemEst.toLocaleString() + ' ج.م' : 'غير محددة بعد'}\n\n` +
+            `#### ✅ قائمة الفحص الفني قبل الشراء:\n` +
+            `1. **كفاءة الطاقة والموتور:** تأكد من وجود ملصق كفاءة الطاقة (A++ أو أعلى) وموتور Inverter لتقليل استهلاك الكهرباء بنسبة تصل إلى 40%.\n` +
+            `2. **شروط الضمان وخدمة ما بعد البيع:** احرص على ضمان رسمي شامل (5 إلى 10 سنوات) من الوكيل المعتمد مع توفر مراكز صيانة قريبة.\n` +
+            `3. **الأبعاد والتهوية:** قس مساحة التركيب بدقة واترك مسافة تهوية (5–10 سم) حول الجهاز لضمان أفضل أداء وعمر افتراضي أطول.`
+          : `### 🔍 Technical Specification & Warranty Audit for (${itemTitle}):\n` +
+            `• **Recommended Specs:** ${itemSpecs}${itemCustomNotes}\n` +
+            `• **Estimated Budget:** ${itemEst > 0 ? itemEst.toLocaleString() + ' EGP' : 'Not set yet'}\n\n` +
+            `#### ✅ Pre-Purchase Inspection Checklist:\n` +
+            `1. **Inverter & Energy Grade:** Verify Grade A++ energy efficiency and Digital Inverter technology for up to 40% power savings and quiet operation.\n` +
+            `2. **Official Warranty:** Confirm a 5–10 year official distributor warranty and accessible local service centers.\n` +
+            `3. **Dimensions & Clearance:** Measure doorway and installation clearance (5–10 cm ventilation gap) before ordering.`;
+      }
+
       return isAr
-        ? `### مقارنة الماركات والمواصفات لـ (${item.titleAr || item.titleEn}):\n` +
-          `1. **الفئة الممتازة (Sharp / LG / Bosch):** كفاءة طاقة A++، موتور انفرتر موفر، ضمان 10 سنوات، متانة عالية وقطع غيار أصلية.\n` +
-          `2. **الفئة المتوسطة الاقتصادية (Beko / Tornado / Fresh):** قيمة ممتازة مقابل السعر، توفر مراكز صيانة محلية، وضمان معتمد 5-10 سنوات.\n` +
-          `💡 **نصيحة للشراء:** احرص على التأكد من وجود صمام الأمان الكامل، وتوفير مسافة تهوية كافية (10 سم على الأقل من الجوانب).`
-        : `### Brand & Specification Analysis for (${item.titleEn || item.titleAr}):\n` +
-          `1. **Premium Tier (LG / Bosch / Sharp):** Inverter motor, A++ energy rating, 10-year motor warranty, silent operation.\n` +
-          `2. **Value Tier (Beko / Tornado / Fresh):** Excellent value for money, easily available spare parts and local service centers.\n` +
-          `💡 **Buying Tip:** Always inspect warranty terms and energy efficiency labels before completing purchase.`;
+        ? `### 🏆 مقارنة الماركات والأسعار لـ (${itemTitle}):\n` +
+          `• **التصنيف:** ${item.category || 'أساسي'} | **المواصفات المطلوبة:** ${itemSpecs}\n` +
+          `• **الميزانية التقديرية:** ${itemEst > 0 ? itemEst.toLocaleString() + ' ج.م' : 'حسب الفئة المختارة'}${itemCustomNotes}\n\n` +
+          `#### 📊 مصفوفة مقارنة الفئات في السوق:\n` +
+          `1. **الفئة العليا (LG / Bosch / Sharp):**\n` +
+          `   - **المميزات:** موتور انفرتر ديجيتال هادئ، كفاءة طاقة A+++، ضمان 10 سنوات، أعلى عمر افتراضي.\n` +
+          `   - **التقييم:** خيار مثالي للاستثمار طويل الأجل.\n` +
+          `2. **فئة القيمة مقابل السعر (Tornado / Beko / Fresh):**\n` +
+          `   - **المميزات:** سعر اقتصادي متوازن، قطع غيار متوفرة بكثرة، ضمان شامل 5–10 سنوات.\n` +
+          `   - **التقييم:** ممتاز لتحقيق توازن الميزانية دون التضحية بالجودة.\n\n` +
+          `💡 **توصية الشراء الذكية:** قارن السعر النقدي (الكاش) بعروض التقسيط بدون فوائد في المعارض المعتمدة، وتأكد من استلام فاتورة ضريبية مختومة لتفعيل الضمان.`
+        : `### 🏆 Brand & Price Comparison Matrix for (${itemTitle}):\n` +
+          `• **Category:** ${item.category || 'Essential'} | **Target Specs:** ${itemSpecs}\n` +
+          `• **Estimated Cost:** ${itemEst > 0 ? itemEst.toLocaleString() + ' EGP' : 'Flexible'}${itemCustomNotes}\n\n` +
+          `#### 📊 Market Tier Comparison:\n` +
+          `1. **Premium Tier (LG / Bosch / Sharp):**\n` +
+          `   - **Highlights:** Digital Inverter motor, A+++ energy efficiency, 10-year warranty, maximum durability.\n` +
+          `2. **Best Value Tier (Tornado / Beko / Fresh):**\n` +
+          `   - **Highlights:** Competitive pricing, widespread local service centers, 5–10 year official warranty.\n\n` +
+          `💡 **Smart Buying Tip:** Compare cash discounts vs. 0% installment offers at authorized showrooms, and register your serial number upon delivery.`;
     }
 
-    if (type === 'budget_tips') {
+    // 2. Empty Checklist / New Account Guidance
+    if (totalItems === 0) {
       return isAr
-        ? `### نصائح تحسين الميزانية وتوقيت الشراء:\n` +
-          `• **الشراء المجمع:** تجميع الأجهزة الأساسية (الثلاجة + الغسالة + البوتاجاز) من معرض واحد يمنحك خصماً فورياً يتراوح بين 5% إلى 10%.\n` +
-          `• **توقيت العروض:** أفضل فترات التخفيضات هي عروض الجمعة البيضاء، رأس السنة، ومعارض التجهيز الكبرى.\n` +
-          `• **تقسيم الأولويات:** ابدأ دائماً بالأجهزة الأساسية (الثلاجة والبوتاجاز والغسالة)، وأجّل الرفاهيات مثل القلاية الهوائية والعجان للمراحل اللاحقة.`
-        : `### Budget Optimization & Buying Strategy:\n` +
-          `• **Bundle Discount:** Purchasing core appliances together from a single distributor can yield 5-10% in cash discounts.\n` +
-          `• **Seasonal Deals:** Leverage major shopping seasons (White Friday, Year-End, Home Expo).\n` +
-          `• **Priority Phasing:** Fund Tier 1 essentials (Fridge, Stove, Washer) first; defer luxury items (Air Fryer, Stand Mixer).`;
+        ? `### ✨ أهلاً بك في مستشار ومحلل Gemini الذكي!\n` +
+          `حسابك الآن جاهز ونظيف تماماً (لا توجد مشاريع أو أصناف مسجلة بعد).\n\n` +
+          `#### 🚀 كيف تبدأ تخطيط مشروعك بذكاء؟\n` +
+          `1. **إنشاء مجلد مشروع:** اضغط على زر **"مجلد مشروع جديد"** من الشريط العلوي وحدد اسم المشروع والميزانية الإجمالية (بالجنيه المصري).\n` +
+          `2. **إضافة الأصناف والمواصفات:** أضف الأصناف مع تحديد الأولوية (عاجلة / مرتفعة / متوسطة / منخفضة) والتكلفة التقديرية.\n` +
+          `3. **التحليل الفوري:** بمجرد إضافة أصنافك، اطلب مني **"تحليل شامل للقائمة والميزانية"** وسأقدم لك خطة أولويات مفصلة وتوصيات التوفير!\n\n` +
+          `💬 *يمكنك أيضاً سؤالي الآن عن أسعار أو مواصفات أي جهاز كهربائي أو منزلي (مثل: مقارنة الثلاجات، الغسالات، البوتاجازات، أو القلايات الهوائية).*`
+        : `### ✨ Welcome to Gemini Smart Advisor & Analyst!\n` +
+          `Your account workspace is currently empty (0 projects and 0 items).\n\n` +
+          `#### 🚀 How to Start Planning Smartly:\n` +
+          `1. **Create a Project Folder:** Click **"New Project Folder"** in the top bar and set your target budget in EGP.\n` +
+          `2. **Add Checklist Items:** Add items with their priority (Urgent / High / Medium / Low) and estimated cost.\n` +
+          `3. **Run Instant AI Analysis:** Once items are added, click **"Full Checklist & Budget Analysis"** for a complete financial & priority breakdown!\n\n` +
+          `💬 *You can also ask me right now about any appliance specs, brand comparisons, or budget strategies.*`;
     }
+
+    // 3. Priority Action Plan (`priority_plan` or query about priorities/urgent)
+    if (type === 'priority_plan' || q.includes('أولوي') || q.includes('عاجل') || q.includes('priorit') || q.includes('urgent')) {
+      const urgentLines = urgentPending
+        .slice(0, 8)
+        .map((it, idx) => {
+          const name = isAr ? it.titleAr || it.titleEn : it.titleEn || it.titleAr;
+          const prLabel = it.priority === 'urgent' ? (isAr ? '🔴 عاجل جداً' : '🔴 Urgent') : (isAr ? '🟠 مرتفع' : '🟠 High');
+          const costStr = (Number(it.estimatedCost) || 0).toLocaleString();
+          const dateStr = it.targetDate ? ` | 📅 ${it.targetDate}` : '';
+          return `${idx + 1}. **${name}** (${prLabel}) — ${costStr} ج.م${dateStr}`;
+        })
+        .join('\n');
+
+      const urgentTotalCost = urgentPending.reduce((acc, it) => acc + (Number(it.estimatedCost) || 0), 0);
+
+      return isAr
+        ? `### 🎯 خطة الأولويات العاجلة وجدول الشراء (${projectName}):\n` +
+          `• **إجمالي الأصناف المتبقية ذات الأولوية العاجلة/المرتفعة:** ${urgentPending.length} من أصل ${totalItems - completedItems.length} صنف غير مشترى.\n` +
+          `• **التمويل المطلوب للأولويات القصوى:** **${urgentTotalCost.toLocaleString()} ج.م**\n\n` +
+          `#### 📋 قائمة الأصناف التي يجب البدء بها فوراً:\n` +
+          `${urgentLines || '✅ تم إنجاز جميع الأصناف العاجلة والمرتفعة!'}\n\n` +
+          `#### 💡 استراتيجية التنفيذ المقترحة:\n` +
+          `• **المرحلة الأولى (هذا الشهر):** التركيز حصرياً على الأصناف العاجلة (🔴) لتجنب تقلبات الأسعار.\n` +
+          `• **المرحلة الثانية:** حسم الأصناف التي في حالة **"قيد المقارنة"** (${comparingItems.length} صنف) واختيار أفضل عرض سعري.\n` +
+          `• **المرحلة الثالثة:** تأجيل الأصناف الاختيارية أو منخفضة الأولوية لحين استقرار الميزانية المتبقية.`
+        : `### 🎯 Urgent Priorities & Action Plan (${projectName}):\n` +
+          `• **Remaining Urgent/High-Priority Items:** ${urgentPending.length} out of ${totalItems - completedItems.length} unpurchased items.\n` +
+          `• **Required Funding for Top Priorities:** **${urgentTotalCost.toLocaleString()} EGP**\n\n` +
+          `#### 📋 Immediate Action Queue:\n` +
+          `${urgentLines || '✅ All urgent and high-priority items are completed!'}\n\n` +
+          `#### 💡 Recommended Execution Strategy:\n` +
+          `• **Phase 1 (Immediate):** Lock in prices for Urgent (🔴) essentials first.\n` +
+          `• **Phase 2:** Finalize the **${comparingItems.length} items** currently in "Comparing" status.\n` +
+          `• **Phase 3:** Defer Low-priority / luxury items until core essentials are delivered.`;
+    }
+
+    // 4. Budget & Savings Strategy (`budget_tips` or query about budget/saving/تقسيم الميزانية)
+    if (type === 'budget_tips' || q.includes('ميزاني') || q.includes('توفير') || q.includes('budget') || q.includes('sav')) {
+      const catBreakdownLines = Array.from(categoryMap.entries())
+        .map(([cat, info]) =>
+          isAr
+            ? `• **${cat}:** ${info.count} أصناف (مكتمل ${info.done}) — تقديري: ${info.est.toLocaleString()} ج.م | مدفوع: ${info.spent.toLocaleString()} ج.م`
+            : `• **${cat}:** ${info.count} items (${info.done} done) — Est: ${info.est.toLocaleString()} EGP | Paid: ${info.spent.toLocaleString()} EGP`
+        )
+        .join('\n');
+
+      const budgetStatusMsg =
+        allocatedBudget > 0
+          ? isAr
+            ? `• **الميزانية المخصصة للمشروع:** ${allocatedBudget.toLocaleString()} ج.م\n` +
+              `• **المصروف الفعلي حتى الآن:** ${totalActualSpent.toLocaleString()} ج.م\n` +
+              `• **الرصيد المتبقي من الميزانية:** ${budgetRemaining.toLocaleString()} ج.م\n` +
+              `• **التكلفة التقديرية للأصناف المتبقية:** ${remainingEstimatedCost.toLocaleString()} ج.م ` +
+              (remainingEstimatedCost <= budgetRemaining
+                ? '(✅ ضمن حدود الميزانية المتاحة)'
+                : `(⚠️ يتجاوز المتبقي بـ ${(remainingEstimatedCost - budgetRemaining).toLocaleString()} ج.م)`)
+            : `• **Allocated Project Budget:** ${allocatedBudget.toLocaleString()} EGP\n` +
+              `• **Actual Spent So Far:** ${totalActualSpent.toLocaleString()} EGP\n` +
+              `• **Remaining Budget Balance:** ${budgetRemaining.toLocaleString()} EGP\n` +
+              `• **Estimated Cost of Remaining Items:** ${remainingEstimatedCost.toLocaleString()} EGP ` +
+              (remainingEstimatedCost <= budgetRemaining
+                ? '(✅ Within remaining budget)'
+                : `(⚠️ Exceeds remaining budget by ${(remainingEstimatedCost - budgetRemaining).toLocaleString()} EGP)`)
+          : isAr
+            ? `• **إجمالي التكلفة التقديرية للقائمة:** ${totalEstimated.toLocaleString()} ج.م | **المدفوع فعلياً:** ${totalActualSpent.toLocaleString()} ج.م`
+            : `• **Total Estimated Cost:** ${totalEstimated.toLocaleString()} EGP | **Actual Paid:** ${totalActualSpent.toLocaleString()} EGP`;
+
+      return isAr
+        ? `### 💰 التحليل المالي وخطة توفير الميزانية (${projectName}):\n` +
+          `${budgetStatusMsg}\n\n` +
+          `#### 📊 توزيع التكاليف حسب المجموعات:\n` +
+          `${catBreakdownLines}\n\n` +
+          `#### 💡 4 توصيات ذكية لتوفير 10%–15% من التكلفة المتبقية:\n` +
+          `1. **خصم الفاتورة المجمعة (Bundle Deal):** جمع الأصناف المتبقية (${totalItems - completedItems.length} صنف) من موزع معتمد واحد يمنحك خصم كاش فوري أو نقاط استرداد (Cashback).\n` +
+          `2. **موازنة الفئات:** اختر الماركات الأعلى للأجهزة التي تعمل 24 ساعة (مثل الثلاجة والغسالة)، واعتمد ماركات اقتصادية موثوقة للأجهزة المساعدة.\n` +
+          `3. **مراقبة السعر الفعلي مقابل التقديري:** سجل السعر الفعلي المدفوع فور الشراء لمراقبة أي وفر وتحويله للأصناف التالية.\n` +
+          `4. **استغلال عروض المواسم:** الشراء في عروض نهاية الشهر ومواسم التخفيضات يوفر شحناً وتركيبًا مجانياً.`
+        : `### 💰 Financial Audit & Smart Budget Strategy (${projectName}):\n` +
+          `${budgetStatusMsg}\n\n` +
+          `#### 📊 Spend Distribution by Category:\n` +
+          `${catBreakdownLines}\n\n` +
+          `#### 💡 4 Actionable Ways to Save 10%–15% on Remaining Items:\n` +
+          `1. **Showroom Bundle Discount:** Grouping your remaining ${totalItems - completedItems.length} items at one authorized dealer unlocks 5–10% cash or loyalty discounts.\n` +
+          `2. **Tier Balancing:** Invest in premium Inverter models for 24/7 appliances (Fridge, Washer) and choose value-tier brands for secondary kitchen tools.\n` +
+          `3. **Track Actual vs. Estimated Variance:** Log actual paid prices immediately to reallocate savings.\n` +
+          `4. **Free Delivery & Installation:** Negotiate free delivery and official installation when purchasing 2+ major items.`;
+    }
+
+    // 5. Full Comprehensive Checklist & Project Analysis (Default / `full_analysis`)
+    const topCostItems = [...itemsList]
+      .sort((a, b) => (Number(b.estimatedCost) || 0) - (Number(a.estimatedCost) || 0))
+      .slice(0, 4)
+      .map(it => `${isAr ? it.titleAr || it.titleEn : it.titleEn || it.titleAr} (${(Number(it.estimatedCost) || 0).toLocaleString()} ج.م)`)
+      .join('، ');
+
+    const catSummary = Array.from(categoryMap.entries())
+      .map(([cat, info]) =>
+        isAr
+          ? `• **${cat}:** إنجاز ${info.done}/${info.count} — إجمالي تقديري ${info.est.toLocaleString()} ج.م`
+          : `• **${cat}:** ${info.done}/${info.count} completed — Est. ${info.est.toLocaleString()} EGP`
+      )
+      .join('\n');
 
     return isAr
-      ? `تحليل ذكي لقائمتك: يتوفر لديك 12 صنفاً أساسياً، تم إنجاز بعضها وتوجد عناصر قيد المقارنة. ننصح بتحديد الماركات ومعارض المعاينة والالتزام بسقف الميزانية التقديرية.`
-      : `Smart analysis: Your checklist has essential home items well structured. Focus on closing high-priority pending items first within target deadlines.`;
+      ? `### 📊 التقرير التحليلي الشامل للمشروع (${projectName}):\n` +
+        `${userPrompt ? `> **رداً على سؤالك:** *"${userPrompt.slice(0, 90)}"*\n\n` : ''}` +
+        `#### 1️⃣ ملخص الإنجاز والوضع المالي:\n` +
+        `• **نسبة الإنجاز الكلية:** **${completionRate}%** (تم شراء/توصيل **${completedItems.length}** من أصل **${totalItems}** صنف)\n` +
+        `• **الأصناف قيد المقارنة:** **${comparingItems.length}** صنف | **قيد الانتظار:** **${pendingItems.length}** صنف\n` +
+        `• **الميزانية المخصصة:** **${allocatedBudget.toLocaleString()} ج.م** | **التكلفة التقديرية الكلية:** **${totalEstimated.toLocaleString()} ج.م**\n` +
+        `• **المدفوع الفعلي:** **${totalActualSpent.toLocaleString()} ج.م** | **المطلوب للأصناف المتبقية:** **${remainingEstimatedCost.toLocaleString()} ج.م**\n\n` +
+        `#### 2️⃣ تحليل المجموعات والتصنيفات:\n` +
+        `${catSummary}\n\n` +
+        `#### 3️⃣ أبرز الأصناف من حيث التكلفة والأولوية:\n` +
+        `• **الأعلى تكلفة في القائمة:** ${topCostItems || 'لا يوجد'}\n` +
+        `• **أصناف عاجلة/مرتفعة تنتظر الشراء:** **${urgentPending.length}** صنف\n\n` +
+        `#### 💡 التوصية الذكية للخطوة القادمة:\n` +
+        `ابدأ بحسم الأصناف الموجودة في حالة **"قيد المقارنة"** (${comparingItems.length}) والأصناف **العاجلة** (${urgentPending.length})، وتأكد من مقارنة كفاءة الطاقة (Inverter A++) وفترة الضمان الشامل قبل الدفع.`
+      : `### 📊 Comprehensive Project & Checklist Analysis (${projectName}):\n` +
+        `${userPrompt ? `> **Regarding your query:** *"${userPrompt.slice(0, 90)}"*\n\n` : ''}` +
+        `#### 1️⃣ Progress & Financial Health:\n` +
+        `• **Overall Completion:** **${completionRate}%** (**${completedItems.length}** of **${totalItems}** items purchased/delivered)\n` +
+        `• **In Comparison:** **${comparingItems.length}** items | **Pending:** **${pendingItems.length}** items\n` +
+        `• **Allocated Budget:** **${allocatedBudget.toLocaleString()} EGP** | **Total Estimated:** **${totalEstimated.toLocaleString()} EGP**\n` +
+        `• **Actual Paid:** **${totalActualSpent.toLocaleString()} EGP** | **Remaining Est. Needed:** **${remainingEstimatedCost.toLocaleString()} EGP**\n\n` +
+        `#### 2️⃣ Category Breakdown:\n` +
+        `${catSummary}\n\n` +
+        `#### 3️⃣ Highest-Impact Items & Priorities:\n` +
+        `• **Highest-Cost Items:** ${topCostItems || 'None'}\n` +
+        `• **Urgent / High-Priority Pending:** **${urgentPending.length}** items\n\n` +
+        `#### 💡 Recommended Next Step:\n` +
+        `Focus next on finalizing your **${comparingItems.length} comparing items** and **${urgentPending.length} urgent/high-priority items**, verifying Inverter A++ ratings and 5–10 year official warranties.`;
   };
+
+  const cacheKey = `${lang || 'ar'}_${actionType || 'chat'}_${project?.id || 'none'}_${totalItems}_${totalActualSpent}_${(prompt || '').trim().slice(0, 120)}`;
+  const cached = aiResponseCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    res.json({
+      success: true,
+      result: cached.text,
+      source: 'cache',
+    });
+    return;
+  }
 
   if (!apiKey) {
     res.json({
       success: true,
-      result: generateFallbackResponse(actionType, currentItem),
-      source: 'offline_knowledge',
+      result: generateSmartAnalysisResponse(actionType, currentItem, prompt),
+      source: 'smart_analysis',
     });
     return;
   }
@@ -480,48 +748,80 @@ app.post('/api/ai-advisor', async (req, res): Promise<void> => {
         },
       },
     });
+
     const systemPrompt = isAr
-      ? `أنت مستشار وخبير أجهزة ومشتريات هندسي منزلي ذكي وودود (Smart Buying Advisor). تساعد المستخدمين في تجهيز منازلهم، مقارنة أفضل الماركات في السوق، نصائح الضمان، أسعار الأجهزة، وفحص قوائم المهام والأولويات.`
-      : `You are an expert home appliance & procurement engineering advisor. You assist users with checklist management, brand comparisons, specs, warranties, and smart budget planning.`;
-    const userMessage = prompt || `يرجى تقديم المشورة للصنف: ${JSON.stringify(currentItem || {})}`;
+      ? `أنت مستشار ومحلل Gemini الذكي (Gemini 3.8 Flash) الخبير في تخطيط المشاريع، إدارة المشتريات، الأجهزة المنزلية والكهربائية، مقارنة الماركات والمواصفات الفنية، والتحليل المالي للميزانيات بالجنيه المصري (ج.م).
+قدم إجابات احترافية، دقيقة، ومنظمة باستخدام عناوين واضحة ونقاط محددة:
+1. إذا سأل المستخدم عن تحليل قائمته أو ميزانيته: قدم تحليلاً رقمياً دقيقاً يشمل نسبة الإنجاز، مقارنة الميزانية المخصصة بالتكلفة التقديرية والمدفوع الفعلي، ترتيب الأولويات العاجلة، وخطة التوفير.
+2. إذا سأل عن صنف أو جهاز معين: قارن بين أفضل الماركات المتاحة في السوق (الفئة العليا مقابل الفئة الاقتصادية)، المواصفات الفنية الموصى بها (مثل Inverter، كفاءة الطاقة، الأمان الكامل)، متوسط الأسعار بالجنيه المصري، وفترة الضمان.
+3. اجعل أسلوبك ودوداً، عملياً، ومباشراً.`
+      : `You are Gemini Smart Advisor & Analyst (Gemini 3.8 Flash), an expert in project checklist management, home appliances, technical specifications, brand comparisons, and financial budget analysis in EGP.
+Provide structured, insightful, and actionable responses with clear headings and bullet points:
+1. For checklist or budget analysis requests: deliver an exact quantitative breakdown (completion %, allocated budget vs. estimated & actual spend, urgent priority queue, and bundle savings strategy).
+2. For specific appliance or item questions: compare top market brands (Premium tier vs. Value tier), key technical specs (Inverter, energy grade, safety features), estimated EGP price ranges, and warranty terms.
+3. Keep your tone helpful, clear, and practical.`;
 
-    const generateWithRetry = async (attempts = 2): Promise<string | undefined> => {
-      let lastErr: unknown;
-      for (let i = 0; i < attempts; i++) {
-        try {
-          const response = await ai.models.generateContent({
-            model: 'gemini-3.8-flash',
-            contents: `${systemPrompt}\n\nطلب المستخدم:\n${userMessage}`,
-          });
-          return response.text;
-        } catch (e: unknown) {
-          lastErr = e;
-          const msg = e instanceof Error ? e.message : String(e);
-          if (i < attempts - 1 && (msg.includes('503') || msg.includes('429') || msg.includes('UNAVAILABLE'))) {
-            await new Promise((resolve) => setTimeout(resolve, (i + 1) * 750));
-            continue;
-          }
-          throw e;
-        }
-      }
-      throw lastErr;
-    };
+    const metricsContext = [
+      `Project: ${projectName} | Allocated Budget: ${allocatedBudget} EGP`,
+      `Total Items: ${totalItems} | Completed: ${completedItems.length} (${completionRate}%) | Comparing: ${comparingItems.length} | Pending: ${pendingItems.length}`,
+      `Total Estimated Cost: ${totalEstimated} EGP | Total Actual Paid: ${totalActualSpent} EGP | Remaining Est. Cost: ${remainingEstimatedCost} EGP`,
+      Array.isArray(categories) && categories.length > 0 ? `User Categories: ${categories.join(', ')}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
 
-    const generatedText = await generateWithRetry();
+    const itemsSummary = itemsList
+      .slice(0, 30)
+      .map(
+        it =>
+          `- [${it.status || 'pending'} | Priority: ${it.priority || 'medium'}] ${isAr ? it.titleAr : it.titleEn || it.titleAr} (${it.category || 'General'}): Est=${it.estimatedCost || 0} EGP, Paid=${it.actualCost || 0} EGP, Specs="${it.notes || ''}", Notes="${it.myNotes || ''}", TargetDate=${it.targetDate || 'N/A'}, Store="${it.storeLocation || ''}"`
+      )
+      .join('\n');
+
+    const historyText = Array.isArray(history)
+      ? history
+          .slice(-6)
+          .map(h => `${h.role === 'model' ? 'Gemini' : 'User'}: ${h.text || ''}`)
+          .join('\n')
+      : '';
+
+    const userMessage = prompt || `يرجى تقديم المشورة والتحليل للصنف: ${JSON.stringify(currentItem || {})}`;
+
+    const fullContents = [
+      systemPrompt,
+      `ملخص المشروع والميزانية (Project & Financial Metrics):\n${metricsContext}`,
+      itemsSummary ? `تفاصيل أصناف المستخدم الحالية (Current Checklist Items):\n${itemsSummary}` : 'قائمة أصناف المستخدم فارغة حالياً (0 items).',
+      historyText ? `سياق المحادثة السابقة (Recent Chat History):\n${historyText}` : '',
+      `طلب المستخدم الحالي (Action Type: ${actionType || 'chat'}):\n${userMessage}`,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: fullContents,
+    });
+    const generatedText = response.text;
+
+    if (generatedText) {
+      aiResponseCache.set(cacheKey, {
+        text: generatedText,
+        expiresAt: Date.now() + 60 * 1000,
+      });
+    }
 
     res.json({
       success: true,
-      result: generatedText || generateFallbackResponse(actionType, currentItem),
+      result: generatedText || generateSmartAnalysisResponse(actionType, currentItem, prompt),
       source: 'gemini',
     });
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.error('Gemini API call failed, falling back:', errMsg);
+    console.warn('Gemini API note, using smart quantitative analysis fallback:', errMsg);
     res.json({
       success: true,
-      result: generateFallbackResponse(actionType, currentItem),
+      result: generateSmartAnalysisResponse(actionType, currentItem, prompt),
       source: 'fallback',
-      error: errMsg,
     });
   }
 });

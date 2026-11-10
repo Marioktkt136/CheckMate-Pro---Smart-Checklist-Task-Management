@@ -16,6 +16,7 @@ export interface Translations {
   analytics: string;
   teamChat: string;
   aiAdvisor: string;
+  mapsTab: string;
   exportPdf: string;
   exportCsv: string;
   syncNow: string;
@@ -47,14 +48,18 @@ export interface Translations {
   itemNo: string;
   category: string;
   itemTitle: string;
+  itemTitleAr: string;
+  itemTitleEn: string;
   specNotes: string;
   myNotes: string;
   status: string;
   priority: string;
   tags: string;
+  tagsCommaSeparated: string;
   cost: string;
   actualCost: string;
   targetDate: string;
+  storeLocationOptional: string;
   actions: string;
   statusPending: string;
   statusComparing: string;
@@ -88,6 +93,8 @@ export interface Translations {
   quickDemoLogin: string;
   orEnterCredentials: string;
   invalidCredentials: string;
+  accountNotFoundError: string;
+  googleAccountNotFoundError: string;
   userAlreadyExists: string;
   registrationSuccess: string;
   selectRole: string;
@@ -105,6 +112,7 @@ export interface Translations {
   lightMode: string;
   save: string;
   cancel: string;
+  close: string;
   confirmDelete: string;
   backupData: string;
   restoreData: string;
@@ -135,11 +143,20 @@ export interface Translations {
   enterPassword: string;
   dontHaveAccount: string;
   alreadyHaveAccount: string;
+  quickSelectHint: string;
+  categoryPlaceholder: string;
+  titleArPlaceholder: string;
+  titleEnPlaceholder: string;
+  specNotesPlaceholder: string;
+  myNotesPlaceholder: string;
+  tagsPlaceholder: string;
+  storeLocationPlaceholder: string;
+  currencyEgp: string;
 }
 
 const AR_TRANSLATIONS: Translations = {
   appName: 'تشيك ميت برو',
-  appSubtitle: 'قائمة الأجهزة وإدارة المهام الذكية',
+  appSubtitle: 'قائمة المشتريات وإدارة المهام الذكية',
   projectTitle: 'قائمة الأجهزة الكهربائية (استثمار العمر)',
   allProjects: 'المشاريع والمجلدات',
   newProject: 'مجلد مشروع جديد',
@@ -149,8 +166,9 @@ const AR_TRANSLATIONS: Translations = {
   checklist: 'قائمة الفحص',
   calendar: 'التقويم والمواعيد',
   analytics: 'التحليلات والميزانية',
-  teamChat: 'محادثة الفريق والمستشار',
-  aiAdvisor: 'المستشار الذكي للأجهزة',
+  teamChat: 'محادثة Gemini الذكية',
+  aiAdvisor: 'مستشار Gemini الذكي',
+  mapsTab: 'الخرائط والمواقع (Google Maps)',
   exportPdf: 'تصدير PDF / طباعة',
   exportCsv: 'تصدير إكسل (CSV)',
   syncNow: 'مزامنة سحابية فورية',
@@ -169,7 +187,7 @@ const AR_TRANSLATIONS: Translations = {
   budgetAllocated: 'الميزانية المخصصة',
   budgetSpent: 'المبلغ المصروف فعلياً',
   budgetRemaining: 'المتبقي من الميزانية',
-  searchPlaceholder: 'بحث في الأصناف، الماركات، المعارض، أو الملاحظات...',
+  searchPlaceholder: 'بحث في الأصناف، الماركات، المتاجر، أو الملاحظات...',
   filterCategory: 'تصفية حسب المجموعة',
   filterStatus: 'تصفية حسب الحالة',
   filterPriority: 'تصفية حسب الأولوية',
@@ -177,24 +195,28 @@ const AR_TRANSLATIONS: Translations = {
   allStatuses: 'جميع الحالات',
   allPriorities: 'جميع الأولويات',
   addItem: 'إضافة صنف جديد',
-  editItem: 'تعديل الصنف',
+  editItem: 'تعديل تفاصيل الصنف',
   deleteItem: 'حذف الصنف',
   itemNo: 'م',
-  category: 'المجموعة',
-  itemTitle: 'الصنف / الجهاز',
-  specNotes: 'المواصفات المطلوبة',
-  myNotes: 'ملاحظاتي (ماركة X - معرض Y)',
+  category: 'المجموعة / التصنيف',
+  itemTitle: 'اسم الصنف',
+  itemTitleAr: 'الاسم (بالعربية)',
+  itemTitleEn: 'الاسم (بالإنجليزي - EN)',
+  specNotes: 'المواصفات الموصى بها',
+  myNotes: 'الملاحظات',
   status: 'تم الشراء؟',
   priority: 'الأولوية',
   tags: 'الوسوم',
-  cost: 'السعر المقدر',
-  actualCost: 'السعر الفعلي المدفوع',
+  tagsCommaSeparated: 'الوسوم (مفصولة بفواصل)',
+  cost: 'التكلفة التقديرية (ج.م)',
+  actualCost: 'السعر الفعلي المدفوع (ج.م)',
   targetDate: 'تاريخ الشراء المستهدف',
+  storeLocationOptional: 'موقع المتجر / المعرض (اختياري)',
   actions: 'إجراءات',
-  statusPending: '⬜ لسه',
-  statusComparing: '⏳ قيد المقارنة',
-  statusPurchased: '✅ تم الشراء',
-  statusDelivered: '🚚 تم التوصيل',
+  statusPending: '⬜ لسه (Pending)',
+  statusComparing: '⏳ قيد المقارنة (Comparing)',
+  statusPurchased: '✅ تم الشراء (Purchased)',
+  statusDelivered: '🚚 تم التوصيل (Delivered)',
   priorityLow: 'منخفضة',
   priorityMedium: 'متوسطة',
   priorityHigh: 'مرتفعة',
@@ -204,9 +226,9 @@ const AR_TRANSLATIONS: Translations = {
   addAttachment: 'إرفاق فاتورة / مستند / صورة',
   comments: 'التعليقات والمناقشة',
   addComment: 'إضافة تعليق',
-  writeComment: 'اكتب تعليقاً أو استفساراً للفريق...',
+  writeComment: 'اكتب تعليقاً أو ملاحظة حول هذا الصنف...',
   send: 'إرسال',
-  askAi: 'استشارة الذكاء الاصطناعي',
+  askAi: 'استشارة Gemini AI',
   askAiDesc: 'مقارنة أفضل الماركات، الضمان، وكفاءة الطاقة',
   login: 'تسجيل الدخول',
   logout: 'تسجيل الخروج',
@@ -223,7 +245,9 @@ const AR_TRANSLATIONS: Translations = {
   quickDemoLogin: 'دخول سريع بحساب تجريبي',
   orEnterCredentials: 'أو أدخل بيانات حسابك',
   invalidCredentials: 'اسم المستخدم أو كلمة المرور غير صحيحة',
-  userAlreadyExists: 'اسم المستخدم أو البريد الإلكتروني مسجل مسبقاً',
+  accountNotFoundError: 'خطأ: هذا الحساب غير موجود في قاعدة البيانات! يرجى إنشاء حساب جديد (Sign Up) أولاً.',
+  googleAccountNotFoundError: 'خطأ: لا يوجد حساب مسجل بهذا البريد في قاعدة البيانات! يرجى الانتقال إلى تبويب "إنشاء حساب جديد" أولاً.',
+  userAlreadyExists: 'اسم المستخدم أو البريد الإلكتروني مسجل مسبقاً في قاعدة البيانات',
   registrationSuccess: 'تم إنشاء الحساب بنجاح وتم تسجيل دخولك',
   selectRole: 'تحديد الصلاحية',
   chooseAvatar: 'اختر صورة رمزية',
@@ -240,6 +264,7 @@ const AR_TRANSLATIONS: Translations = {
   lightMode: 'الوضع النهاري',
   save: 'حفظ التعديلات',
   cancel: 'إلغاء',
+  close: 'إغلاق',
   confirmDelete: 'هل أنت متأكد من الحذف؟',
   backupData: 'نسخ احتياطي للبيانات',
   restoreData: 'استعادة نسخة احتياطية',
@@ -253,8 +278,8 @@ const AR_TRANSLATIONS: Translations = {
   privateBadge: 'خاص',
   publishedBadge: 'منشور',
   publishedToggleHint: 'نشر في مساحة العمل المشتركة',
-  brandAndStore: 'اكتب ماركة أو معرض أو سعر...',
-  orderExcel: 'ترتيب الإكسل (م)',
+  brandAndStore: 'اكتب الماركة، المتجر، أو ملاحظاتك الخاصة...',
+  orderExcel: 'ترتيب القائمة (م)',
   byPriority: 'الأولوية',
   byName: 'الاسم',
   byCost: 'السعر',
@@ -270,6 +295,15 @@ const AR_TRANSLATIONS: Translations = {
   enterPassword: 'أدخل كلمة المرور',
   dontHaveAccount: 'ليس لديك حساب؟ إنشاء حساب جديد',
   alreadyHaveAccount: 'لديك حساب بالفعل؟ تسجيل الدخول',
+  quickSelectHint: 'انقر للاختيار السريع',
+  categoryPlaceholder: 'مثال: الأجهزة الأساسية',
+  titleArPlaceholder: 'مثال: الثلاجة',
+  titleEnPlaceholder: 'مثال: Refrigerator',
+  specNotesPlaceholder: 'مثال: نوفروست / انفرتر موفر للطاقة',
+  myNotesPlaceholder: 'مثال: ماركة شارب - معرض بي تك',
+  tagsPlaceholder: 'أساسي, مطبخ, موفر للطاقة',
+  storeLocationPlaceholder: 'مثال: بي تك - مدينة نصر أو رابط الموقع',
+  currencyEgp: 'ج.م',
 };
 
 const EN_TRANSLATIONS: Translations = {
@@ -284,8 +318,9 @@ const EN_TRANSLATIONS: Translations = {
   checklist: 'Checklist',
   calendar: 'Calendar & Schedule',
   analytics: 'Analytics & Budget',
-  teamChat: 'Team Chat & Advisor',
-  aiAdvisor: 'AI Appliance Consultant',
+  teamChat: 'Gemini Chat',
+  aiAdvisor: 'Gemini AI Advisor',
+  mapsTab: 'Maps & Saved Locations',
   exportPdf: 'Export PDF / Print',
   exportCsv: 'Export Excel (CSV)',
   syncNow: 'Sync with Cloud Now',
@@ -304,7 +339,7 @@ const EN_TRANSLATIONS: Translations = {
   budgetAllocated: 'Allocated Budget',
   budgetSpent: 'Actual Spent',
   budgetRemaining: 'Remaining Budget',
-  searchPlaceholder: 'Search appliances, brands, showrooms, notes...',
+  searchPlaceholder: 'Search items, brands, stores, notes...',
   filterCategory: 'Filter by Category',
   filterStatus: 'Filter by Status',
   filterPriority: 'Filter by Priority',
@@ -312,19 +347,23 @@ const EN_TRANSLATIONS: Translations = {
   allStatuses: 'All Statuses',
   allPriorities: 'All Priorities',
   addItem: 'Add New Item',
-  editItem: 'Edit Item',
+  editItem: 'Edit Item Details',
   deleteItem: 'Delete Item',
   itemNo: 'No.',
   category: 'Category',
-  itemTitle: 'Item / Appliance',
+  itemTitle: 'Item Name',
+  itemTitleAr: 'Name (in AR)',
+  itemTitleEn: 'Name (in EN)',
   specNotes: 'Recommended Specs',
-  myNotes: 'My Notes (Brand X - Store Y)',
+  myNotes: 'Notes',
   status: 'Purchased?',
   priority: 'Priority',
   tags: 'Tags',
-  cost: 'Estimated Cost',
-  actualCost: 'Actual Price Paid',
+  tagsCommaSeparated: 'Tags (comma-separated, مفصولة بفواصل)',
+  cost: 'Estimated Cost (ج.م)',
+  actualCost: 'Actual Price Paid (ج.م)',
   targetDate: 'Target Purchase Date',
+  storeLocationOptional: 'Store Location (Optional)',
   actions: 'Actions',
   statusPending: '⬜ Pending',
   statusComparing: '⏳ Comparing',
@@ -339,9 +378,9 @@ const EN_TRANSLATIONS: Translations = {
   addAttachment: 'Attach Invoice / Image / PDF',
   comments: 'Comments & Discussion',
   addComment: 'Add Comment',
-  writeComment: 'Write a note or mention someone...',
+  writeComment: 'Write a comment or discussion note...',
   send: 'Send',
-  askAi: 'Consult AI',
+  askAi: 'Consult Gemini AI',
   askAiDesc: 'Compare top brands, warranties, and energy efficiency',
   login: 'Sign In',
   logout: 'Sign Out',
@@ -357,8 +396,10 @@ const EN_TRANSLATIONS: Translations = {
   loginToContinue: 'Sign in to access your checklist and cloud sync',
   quickDemoLogin: 'Quick Demo Login',
   orEnterCredentials: 'Or enter your credentials',
-  invalidCredentials: 'Invalid email or password',
-  userAlreadyExists: 'An account with this email already exists',
+  invalidCredentials: 'Invalid username/email or password',
+  accountNotFoundError: 'Error: No account found in the database with these credentials! Please Sign Up first.',
+  googleAccountNotFoundError: 'Error: No account found in the database for this Google email! Please switch to Sign Up to create an account first.',
+  userAlreadyExists: 'An account with this username or email already exists in the database',
   registrationSuccess: 'Account created successfully and signed in',
   selectRole: 'Select Role',
   chooseAvatar: 'Choose Avatar',
@@ -375,6 +416,7 @@ const EN_TRANSLATIONS: Translations = {
   lightMode: 'Light Mode',
   save: 'Save Changes',
   cancel: 'Cancel',
+  close: 'Close',
   confirmDelete: 'Are you sure you want to delete this item?',
   backupData: 'Backup Data (JSON)',
   restoreData: 'Restore Backup',
@@ -388,8 +430,8 @@ const EN_TRANSLATIONS: Translations = {
   privateBadge: 'Private',
   publishedBadge: 'Published',
   publishedToggleHint: 'Publish to shared workspace',
-  brandAndStore: 'Write brand, store, or price...',
-  orderExcel: 'Excel Order (No.)',
+  brandAndStore: 'Enter brand, store, or custom notes...',
+  orderExcel: 'List Order (No.)',
   byPriority: 'Priority',
   byName: 'Name',
   byCost: 'Cost',
@@ -405,6 +447,15 @@ const EN_TRANSLATIONS: Translations = {
   enterPassword: 'Enter your password',
   dontHaveAccount: "Don't have an account? Sign Up",
   alreadyHaveAccount: 'Already have an account? Sign In',
+  quickSelectHint: 'Click for quick select',
+  categoryPlaceholder: 'e.g. Essential Appliances',
+  titleArPlaceholder: 'e.g. الثلاجة',
+  titleEnPlaceholder: 'e.g. Refrigerator',
+  specNotesPlaceholder: 'e.g. No-Frost / Inverter Digital',
+  myNotesPlaceholder: 'e.g. Brand X - Showroom Y',
+  tagsPlaceholder: 'Essential, Kitchen, Energy A++',
+  storeLocationPlaceholder: 'e.g. B.Tech Nasr City or Google Maps link',
+  currencyEgp: 'ج.م',
 };
 
 @Injectable({

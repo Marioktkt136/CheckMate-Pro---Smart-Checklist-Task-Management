@@ -18,6 +18,7 @@ export interface ChecklistItem {
   actualCost: number;
   currency: string;
   targetDate?: string;
+  storeLocation?: string;
   storeName?: string;
   storeAddress?: string;
   assignee?: {
@@ -58,6 +59,31 @@ export interface ProjectFolder {
   budget: number;
   ownerId?: string;
   isPublished?: boolean;
+}
+
+export interface MapLocation {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  category: string;
+  brand: string;
+  addressAr: string;
+  addressEn: string;
+  phone: string;
+  rating: number;
+  openHours: string;
+  specialDealsAr: string;
+  specialDealsEn: string;
+  position: {
+    lat: number;
+    lng: number;
+  };
+}
+
+export interface UserUiOptions {
+  darkMode: boolean;
+  language: 'ar' | 'en';
+  activeProjectId: string;
 }
 
 export interface ChecklistStats {
@@ -296,3 +322,56 @@ export function createGoogleCalendarUrl(item: ChecklistItem, lang: 'ar' | 'en' =
 
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}${dateParam}`;
 }
+
+export function generateSecureRandomPassword(length = 24): string {
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+=';
+  const targetLen = Math.max(16, length);
+  let password = '';
+
+  if (typeof globalThis !== 'undefined' && globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
+    const values = new Uint32Array(targetLen);
+    globalThis.crypto.getRandomValues(values);
+    for (let i = 0; i < targetLen; i++) {
+      password += charset[values[i] % charset.length];
+    }
+  } else {
+    for (let i = 0; i < targetLen; i++) {
+      password += charset[Math.floor(Math.random() * charset.length)];
+    }
+  }
+
+  return password;
+}
+
+export function normalizeUiOptions(opts?: Partial<UserUiOptions> | null): UserUiOptions {
+  return {
+    darkMode: typeof opts?.darkMode === 'boolean' ? opts.darkMode : false,
+    language: opts?.language === 'en' ? 'en' : 'ar',
+    activeProjectId: typeof opts?.activeProjectId === 'string' ? opts.activeProjectId : '',
+  };
+}
+
+export function createEmptyUserWorkspace(): {
+  projects: ProjectFolder[];
+  items: ChecklistItem[];
+  categories: string[];
+  notifications: never[];
+  mapLocations: MapLocation[];
+  aiChats: never[];
+  uiOptions: UserUiOptions;
+} {
+  return {
+    projects: [],
+    items: [],
+    categories: [],
+    notifications: [],
+    mapLocations: [],
+    aiChats: [],
+    uiOptions: {
+      darkMode: false,
+      language: 'ar',
+      activeProjectId: '',
+    },
+  };
+}
+

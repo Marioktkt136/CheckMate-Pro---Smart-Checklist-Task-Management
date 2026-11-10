@@ -25,9 +25,9 @@ import { ChecklistItem } from '../core/checklist-rules';
               </h3>
               <p class="text-xs text-slate-500 dark:text-slate-400">
                 @if (item()) {
-                  <span>مستشار هندسي ومقارنة ماركات لـ: {{ item()?.titleAr }}</span>
+                  <span>{{ i18n.isRtl() ? 'مستشار ذكي ومقارنة ماركات لـ: ' + item()?.titleAr : 'Gemini Smart Advisor & Brand Comparison for: ' + (item()?.titleEn || item()?.titleAr) }}</span>
                 } @else {
-                  <span>استشارة شاملة لكافة أجهزة المشروع وقائمة الفحص</span>
+                  <span>{{ i18n.isRtl() ? 'استشارة شاملة لكافة أجهزة المشروع وقائمة الفحص' : 'Comprehensive Gemini review for your project checklist' }}</span>
                 }
               </p>
             </div>
@@ -49,7 +49,7 @@ import { ChecklistItem } from '../core/checklist-rules';
             class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 transition cursor-pointer flex items-center gap-1.5"
           >
             <mat-icon class="text-sm">compare_arrows</mat-icon>
-            <span>مقارنة أفضل الماركات</span>
+            <span>{{ i18n.isRtl() ? 'مقارنة أفضل الماركات' : 'Compare Top Brands' }}</span>
           </button>
 
           <button
@@ -58,7 +58,16 @@ import { ChecklistItem } from '../core/checklist-rules';
             class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition cursor-pointer flex items-center gap-1.5"
           >
             <mat-icon class="text-sm">tune</mat-icon>
-            <span>المواصفات الفنية والضمان</span>
+            <span>{{ i18n.isRtl() ? 'المواصفات الفنية والضمان' : 'Specs & Warranty Check' }}</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="runConsultation('priority_plan')"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 transition cursor-pointer flex items-center gap-1.5"
+          >
+            <mat-icon class="text-sm">priority_high</mat-icon>
+            <span>{{ i18n.isRtl() ? 'تحليل الأولويات العاجلة' : 'Priority Action Plan' }}</span>
           </button>
 
           <button
@@ -67,17 +76,17 @@ import { ChecklistItem } from '../core/checklist-rules';
             class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition cursor-pointer flex items-center gap-1.5"
           >
             <mat-icon class="text-sm">savings</mat-icon>
-            <span>نصائح الميزانية والخصم المجمع</span>
+            <span>{{ i18n.isRtl() ? 'نصائح الميزانية والخصم المجمع' : 'Budget & Bundle Savings' }}</span>
           </button>
         </div>
 
         <!-- Advisor Response Area -->
-        <div class="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 min-h-[180px] max-h-[300px] overflow-y-auto">
+        <div class="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 min-h-[180px] max-h-[320px] overflow-y-auto">
           @if (isLoading()) {
             <div class="py-12 flex flex-col items-center justify-center text-center space-y-3">
               <mat-icon class="text-3xl text-purple-600 animate-spin">sync</mat-icon>
               <p class="text-xs font-medium text-slate-500">
-                جاري استدعاء نموذج الذكاء الاصطناعي لتحليل المواصفات والأسعار...
+                {{ i18n.isRtl() ? 'جاري استدعاء نموذج Gemini لتحليل المواصفات والأسعار...' : 'Calling Gemini AI to analyze specs, brands, and pricing...' }}
               </p>
             </div>
           } @else if (advisorResponse()) {
@@ -86,10 +95,17 @@ import { ChecklistItem } from '../core/checklist-rules';
             </div>
           } @else {
             <div class="py-10 text-center text-xs text-slate-400">
-              اختر أحد الأزرار أعلاه لبدء استشارة المستشار الذكي للأجهزة.
+              {{ i18n.isRtl() ? 'اختر أحد الأزرار أعلاه لبدء استشارة المستشار الذكي للأجهزة.' : 'Select one of the buttons above to consult Gemini Advisor.' }}
             </div>
           }
         </div>
+
+        @if (savedNotice()) {
+          <div class="mt-3 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 font-semibold flex items-center gap-2">
+            <mat-icon class="text-emerald-600 text-base">check_circle</mat-icon>
+            <span>{{ savedNotice() }}</span>
+          </div>
+        }
 
         <!-- Footer Actions -->
         <div class="mt-4 flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -100,7 +116,7 @@ import { ChecklistItem } from '../core/checklist-rules';
               class="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
             >
               <mat-icon class="text-sm">note_add</mat-icon>
-              <span>إضافة التوصية لخانة "ملاحظاتي" لهذا الصنف</span>
+              <span>{{ i18n.isRtl() ? 'إضافة التوصية لخانة "ملاحظاتي" لهذا الصنف' : 'Append recommendation to item Notes' }}</span>
             </button>
           } @else {
             <span></span>
@@ -111,7 +127,7 @@ import { ChecklistItem } from '../core/checklist-rules';
             (click)="closeModal.emit()"
             class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
           >
-            إغلاق
+            {{ i18n.isRtl() ? 'إغلاق' : 'Close' }}
           </button>
         </div>
 
@@ -128,17 +144,23 @@ export class AiAdvisorModalComponent implements OnInit {
 
   isLoading = signal<boolean>(false);
   advisorResponse = signal<string>('');
+  savedNotice = signal<string>('');
 
   ngOnInit() {
-    this.runConsultation('compare_brands');
+    this.runConsultation(this.item() ? 'compare_brands' : 'full_analysis');
   }
 
   async runConsultation(actionType: string) {
     this.isLoading.set(true);
     const target = this.item();
+    const isAr = this.i18n.isRtl();
     const prompt = target
-      ? `يرجى تزويدي بمقارنة ذكية لأفضل الماركات والأسعار وفترة الضمان وكفاءة استهلاك الطاقة للجهاز: (${target.titleAr}) ومواصفاته (${target.notes || 'أساسي'}). نوع الاستشارة: ${actionType}`
-      : `يرجى تقديم مراجعة شاملة لقائمة أجهزة المنزل والتجهيزات الكهربائية، وتقديم نصائح توفير الميزانية واختيار الماركات الموثوقة.`;
+      ? isAr
+        ? `يرجى تزويدي بمقارنة ذكية لأفضل الماركات والأسعار وفترة الضمان وكفاءة استهلاك الطاقة للجهاز: (${target.titleAr}) ومواصفاته (${target.notes || 'أساسي'}). نوع الاستشارة: ${actionType}`
+        : `Please provide a smart comparison of top brands, estimated prices in EGP, warranty period, and energy efficiency for (${target.titleEn || target.titleAr}) with specs (${target.notes || 'Standard'}). Consultation type: ${actionType}`
+      : isAr
+        ? `يرجى تقديم مراجعة وتحليل شامل لقائمة مشتريات المشروع والميزانية والأولويات.`
+        : `Please provide a comprehensive analysis of our project checklist items, priorities, and budget.`;
 
     try {
       const res = await fetch('/api/ai-advisor', {
@@ -148,6 +170,8 @@ export class AiAdvisorModalComponent implements OnInit {
           prompt,
           currentItem: target,
           allItems: this.storage.currentProjectItems(),
+          project: this.storage.activeProject(),
+          categories: this.storage.categories(),
           actionType,
           lang: this.i18n.currentLang(),
         }),
@@ -159,7 +183,11 @@ export class AiAdvisorModalComponent implements OnInit {
       }
     } catch (e) {
       console.warn('AI Advisor call failed', e);
-      this.advisorResponse.set('تمت الاستشارة بالاعتماد على التوصيات المحلية المحفوظة: ينصح باختيار موتور انفرتر وضمان معتمد لا يقل عن 5-10 سنوات.');
+      this.advisorResponse.set(
+        isAr
+          ? 'تمت الاستشارة بالاعتماد على التوصيات المحفوظة: ينصح باختيار موتور انفرتر وضمان معتمد لا يقل عن 5-10 سنوات.'
+          : 'Consultation fallback: Choose an Inverter motor model with an official 5 to 10-year warranty.'
+      );
     } finally {
       this.isLoading.set(false);
     }
@@ -169,12 +197,18 @@ export class AiAdvisorModalComponent implements OnInit {
     const it = this.item();
     if (!it) return;
     const currentNotes = it.myNotes ? it.myNotes + ' | ' : '';
-    const summary = 'توصية الذكاء الاصطناعي: اختيار ماركة معتمدة بضمان 10 سنوات وكفاءة A';
+    const summary = this.i18n.isRtl()
+      ? 'توصية Gemini: اختيار ماركة انفرتر معتمدة بضمان 10 سنوات وكفاءة A'
+      : 'Gemini Tip: Choose an Inverter brand with 10-year warranty & Grade A efficiency';
     this.storage.updateItem({
       ...it,
       myNotes: currentNotes + summary,
     });
-    alert('تمت إضافة التوصية لخانة ملاحظاتي بنجاح!');
-    this.closeModal.emit();
+    this.savedNotice.set(
+      this.i18n.isRtl()
+        ? 'تمت إضافة التوصية لخانة الملاحظات بنجاح!'
+        : 'Recommendation added to item Notes!'
+    );
+    setTimeout(() => this.closeModal.emit(), 900);
   }
 }

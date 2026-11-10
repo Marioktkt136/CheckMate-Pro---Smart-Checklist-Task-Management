@@ -1,7 +1,25 @@
 import { Injectable, signal, computed, effect, inject } from '@angular/core';
-import { ChecklistItem, ProjectFolder, ItemStatus } from '../core/checklist-rules';
-import { FirebaseService } from './firebase.service';
+import {
+  ChecklistItem,
+  ProjectFolder,
+  ItemStatus,
+  MapLocation,
+  UserUiOptions,
+  createEmptyUserWorkspace,
+  normalizeUiOptions,
+} from '../core/checklist-rules';
+import { FirebaseService, CloudUserWorkspace } from './firebase.service';
 import { AuthService } from './auth.service';
+import { I18nService, Language } from './i18n.service';
+
+export const EMPTY_PROJECT_PLACEHOLDER: ProjectFolder = {
+  id: '',
+  nameAr: 'لا يوجد مشروع نشط',
+  nameEn: 'No Active Project',
+  icon: 'folder_off',
+  color: '#64748b',
+  budget: 0,
+};
 
 export interface AppNotification {
   id: string;
@@ -23,6 +41,106 @@ export interface ChatMessage {
   avatar: string;
   isAi?: boolean;
 }
+
+export const DEFAULT_CATEGORIES: string[] = [
+  'الأجهزة الأساسية',
+  'أجهزة المطبخ',
+  'أجهزة التنظيف والكي',
+  'الرفاهية المطبخية',
+];
+
+export const DEFAULT_MAP_LOCATIONS: MapLocation[] = [
+  {
+    id: 'loc-1',
+    nameAr: 'بي تك - فرع عباس العقاد، مدينة نصر',
+    nameEn: 'B.Tech - Abbas El Akkad, Nasr City',
+    category: 'appliances',
+    brand: 'B.Tech',
+    addressAr: 'شارع عباس العقاد، أمام الحديقة الدولية، مدينة نصر، القاهرة',
+    addressEn: 'Abbas El Akkad St, Nasr City, Cairo',
+    phone: '19966',
+    rating: 4.6,
+    openHours: '10:00 AM - 11:00 PM',
+    specialDealsAr: 'تقسيط حتى 24 شهر بدون فوائد على الثلاجات والغسالات',
+    specialDealsEn: '0% interest installment up to 24 months on fridges & washers',
+    position: { lat: 30.0561, lng: 31.3412 },
+  },
+  {
+    id: 'loc-2',
+    nameAr: 'العربي سنتر - مصر الجديدة',
+    nameEn: 'Elaraby Center - Heliopolis',
+    category: 'appliances',
+    brand: 'Elaraby',
+    addressAr: 'ميدان روكسي، مصر الجديدة، القاهرة',
+    addressEn: 'Roxy Square, Heliopolis, Cairo',
+    phone: '19319',
+    rating: 4.8,
+    openHours: '09:30 AM - 10:30 PM',
+    specialDealsAr: 'ضمان العربي الشامل 10 سنوات على ثلاجات ومكانس توشيبا وشارب وتورنيدو',
+    specialDealsEn: '10-year official Elaraby warranty on Sharp & Tornado appliances',
+    position: { lat: 30.0934, lng: 31.3182 },
+  },
+  {
+    id: 'loc-3',
+    nameAr: 'ايكيا القاهرة - كايرو فيستيفال سيتي',
+    nameEn: 'IKEA Cairo - Festival City Mall',
+    category: 'furniture',
+    brand: 'IKEA',
+    addressAr: 'الطريق الدائري، التجمع الخامس، القاهرة الجديدة',
+    addressEn: 'Ring Road, 5th Settlement, New Cairo',
+    phone: '16576',
+    rating: 4.8,
+    openHours: '10:00 AM - 11:00 PM',
+    specialDealsAr: 'تشكيلة كاملة للأثاث، المطابخ، وحدات التخزين، والإضاءة الحديثة',
+    specialDealsEn: 'Complete furniture, modular kitchens, storage units & lighting',
+    position: { lat: 30.0286, lng: 31.4081 },
+  },
+  {
+    id: 'loc-4',
+    nameAr: 'كارفور سيتي سنتر ألماظة',
+    nameEn: 'Carrefour - City Centre Almaza',
+    category: 'shopping',
+    brand: 'Carrefour',
+    addressAr: 'طريق السويس، مصر الجديدة، القاهرة',
+    addressEn: 'Suez Road, Almaza, Cairo',
+    phone: '16061',
+    rating: 4.7,
+    openHours: '09:00 AM - 12:00 AM',
+    specialDealsAr: 'خصم 10% نقاط كاش باك على الخلاطات والقلايات ومستلزمات المنزل',
+    specialDealsEn: '10% MyClub cashback points on home supplies, blenders & air fryers',
+    position: { lat: 30.0886, lng: 31.3654 },
+  },
+  {
+    id: 'loc-5',
+    nameAr: 'معرض السلاب للسيراميك والتشطيبات - مدينة نصر',
+    nameEn: 'El Sallab Ceramics & Finishing - Nasr City',
+    category: 'finishing',
+    brand: 'El Sallab',
+    addressAr: 'شارع مصطفى النحاس، مدينة نصر، القاهرة',
+    addressEn: 'Mostafa El Nahas St, Nasr City, Cairo',
+    phone: '19294',
+    rating: 4.6,
+    openHours: '10:00 AM - 10:30 PM',
+    specialDealsAr: 'أطقم حمامات، خلاطات، سيراميك، وبورسلين بخصومات المشاريع',
+    specialDealsEn: 'Sanitary ware, mixers, ceramics & porcelain project discounts',
+    position: { lat: 30.0532, lng: 31.3545 },
+  },
+  {
+    id: 'loc-6',
+    nameAr: 'إل جي براند شوب - المهندسين',
+    nameEn: 'LG Brand Shop - Mohandessin',
+    category: 'appliances',
+    brand: 'LG',
+    addressAr: 'شارع جامعة الدول العربية، المهندسين، الجيزة',
+    addressEn: 'Gamat El Dowal Al Arabiya St, Mohandessin, Giza',
+    phone: '19960',
+    rating: 4.9,
+    openHours: '10:00 AM - 11:00 PM',
+    specialDealsAr: 'ضمان 10 سنوات على موتور Direct Drive للغسالات والشاشات الذكية',
+    specialDealsEn: '10-year direct drive motor warranty on washers & OLED TVs',
+    position: { lat: 30.0524, lng: 31.2001 },
+  },
+];
 
 const INITIAL_PROJECTS: ProjectFolder[] = [
   {
@@ -68,6 +186,8 @@ const INITIAL_ITEMS: ChecklistItem[] = [
     actualCost: 0,
     currency: 'EGP',
     targetDate: '2026-11-20',
+    storeLocation: 'بي تك - فرع عباس العقاد، مدينة نصر',
+    storeName: 'بي تك - فرع عباس العقاد، مدينة نصر',
     assignee: { name: 'أحمد محمود', email: 'ahmed@example.com', avatar: '👨‍💼', role: 'admin' },
     attachments: [],
     comments: [
@@ -92,6 +212,8 @@ const INITIAL_ITEMS: ChecklistItem[] = [
     actualCost: 0,
     currency: 'EGP',
     targetDate: '2026-11-25',
+    storeLocation: 'إل جي براند شوب - المهندسين',
+    storeName: 'إل جي براند شوب - المهندسين',
     assignee: { name: 'سارة علي', email: 'sara@example.com', avatar: '👩‍💼', role: 'editor' },
     attachments: [],
     comments: [],
@@ -127,7 +249,7 @@ const INITIAL_ITEMS: ChecklistItem[] = [
     category: 'أجهزة المطبخ',
     titleAr: 'الميكروويف أو الفرن الكهربائي',
     titleEn: 'Microwave or Electric Oven',
-    notes: '',
+    notes: 'شواية داخلية وسعة مناسبة',
     myNotes: 'شارب 34 لتر بالشواية سيلفر',
     status: 'pending',
     priority: 'medium',
@@ -158,6 +280,8 @@ const INITIAL_ITEMS: ChecklistItem[] = [
     actualCost: 3100,
     currency: 'EGP',
     targetDate: '2026-11-02',
+    storeLocation: 'كارفور سيتي سنتر ألماظة',
+    storeName: 'كارفور سيتي سنتر ألماظة',
     assignee: { name: 'أحمد محمود', email: 'ahmed@example.com', avatar: '👨‍💼', role: 'admin' },
     attachments: [],
     comments: [
@@ -173,7 +297,7 @@ const INITIAL_ITEMS: ChecklistItem[] = [
     category: 'أجهزة المطبخ',
     titleAr: 'الكبة',
     titleEn: 'Food Chopper',
-    notes: '',
+    notes: 'شفرات ستانلس ستيل',
     myNotes: 'كينوود أو تورنيدو 500 واط وعاء زجاجي صحي',
     status: 'pending',
     priority: 'medium',
@@ -215,7 +339,7 @@ const INITIAL_ITEMS: ChecklistItem[] = [
     category: 'أجهزة التنظيف والكي',
     titleAr: 'المكنسة الكهربائية',
     titleEn: 'Vacuum Cleaner',
-    notes: '',
+    notes: 'شفط قوي وفلتر HEPA',
     myNotes: 'باناسونيك برميل 2200 واط ياباني أو هيتاشي',
     status: 'comparing',
     priority: 'high',
@@ -257,7 +381,7 @@ const INITIAL_ITEMS: ChecklistItem[] = [
     category: 'أجهزة التنظيف والكي',
     titleAr: 'طاولة المكواة',
     titleEn: 'Ironing Board',
-    notes: '',
+    notes: 'متينة وقابلة للطي',
     myNotes: 'طاولة معدنية قابلة لتعديل الارتفاع مع حامل للمكواة ومقبس كهربائي',
     status: 'pending',
     priority: 'low',
@@ -278,7 +402,7 @@ const INITIAL_ITEMS: ChecklistItem[] = [
     category: 'الرفاهية المطبخية',
     titleAr: 'الشواية الكهربائية',
     titleEn: 'Electric Grill',
-    notes: '',
+    notes: 'سطح غير لاصق',
     myNotes: 'جريل تيفال غير لاصق تسخين سريع مع مجمع للدهون',
     status: 'pending',
     priority: 'low',
@@ -315,185 +439,117 @@ const INITIAL_ITEMS: ChecklistItem[] = [
   },
 ];
 
+const INITIAL_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'n1',
+    title: 'موعد شراء الثلاجة يقترب',
+    titleEn: 'Refrigerator purchase date approaching',
+    message: 'متبقي 12 يوماً على الموعد المستهدف لشراء الثلاجة',
+    messageEn: '12 days remaining until the target date for Refrigerator',
+    type: 'deadline',
+    read: false,
+    timestamp: '2026-11-08 09:00',
+  },
+  {
+    id: 'n2',
+    title: 'تم تحديث حالة صنف',
+    titleEn: 'Item status updated',
+    message: 'تم تحديث حالة الخلاط إلى "تم الشراء"',
+    messageEn: 'Blender status updated to Purchased',
+    type: 'update',
+    read: true,
+    timestamp: '2026-11-03 16:00',
+  },
+];
+
+const INITIAL_AI_CHATS: ChatMessage[] = [
+  {
+    id: 'm_welcome',
+    sender: 'Gemini AI',
+    senderRole: 'Gemini 3.8 Flash',
+    text: 'أهلاً بك في محادثة Gemini الذكية! يمكنك سؤالي عن أي جهاز، مقارنة الماركات والأسعار، تخطيط الميزانية، أو أي استفسار عام.',
+    timestamp: '10:00',
+    avatar: '✨',
+    isAi: true,
+  },
+];
+
 @Injectable({
   providedIn: 'root',
 })
 export class StorageService {
   private firebase = inject(FirebaseService);
   private auth = inject(AuthService);
+  private i18n = inject(I18nService);
 
   readonly cloudProjectId = 'gen-lang-client-0495942485';
   readonly cloudDbId = 'ai-studio-checkmateprosmar-13750c5e-07b2-4f6e-9764-100644db56e9';
   readonly cloudRegion = 'europe-west1';
 
-  items = signal<ChecklistItem[]>(INITIAL_ITEMS);
+  // Per-User Isolated Workspace Signals
   projects = signal<ProjectFolder[]>(INITIAL_PROJECTS);
-  activeProjectId = signal<string>('home_appliances');
+  items = signal<ChecklistItem[]>(INITIAL_ITEMS);
+  categories = signal<string[]>(DEFAULT_CATEGORIES);
+  notifications = signal<AppNotification[]>(INITIAL_NOTIFICATIONS);
+  chatMessages = signal<ChatMessage[]>(INITIAL_AI_CHATS);
+  mapLocations = signal<MapLocation[]>(DEFAULT_MAP_LOCATIONS);
 
-  /**
-   * Data scope:
-   * - 'all': Show all user's items + all published items (or full list for admin)
-   * - 'mine': Show only items created/owned by active account
-   * - 'published': Show only items published to shared workspace
-   */
+  activeProjectId = signal<string>('home_appliances');
   dataScope = signal<'all' | 'mine' | 'published'>('all');
 
   isOnline = signal<boolean>(true);
   isSyncing = signal<boolean>(false);
   hasPendingSync = signal<boolean>(false);
-  lastSyncTime = signal<string>('الآن (سحابة Firestore متصلة)');
+  lastSyncTime = signal<string>('الآن');
 
   isDarkMode = signal<boolean>(false);
   isCloudConnected = computed(() => this.firebase.isConnectedToFirestore());
 
-  notifications = signal<AppNotification[]>([
-    {
-      id: 'n1',
-      title: 'موعد شراء الثلاجة يقترب',
-      titleEn: 'Refrigerator purchase date approaching',
-      message: 'متبقي 12 يوماً على الموعد المستهدف لشراء الثلاجة',
-      messageEn: '12 days remaining until the target date for Refrigerator',
-      type: 'deadline',
-      read: false,
-      timestamp: '2026-11-08 09:00',
-    },
-    {
-      id: 'n2',
-      title: 'تم تحديث حالة صنف',
-      titleEn: 'Item status updated',
-      message: 'قام أحمد محمود بتحديث حالة الخلاط إلى "تم الشراء"',
-      messageEn: 'Ahmed updated Blender status to Purchased',
-      type: 'update',
-      read: true,
-      timestamp: '2026-11-03 16:00',
-    },
-    {
-      id: 'n3',
-      title: 'إشعار النسخ الاحتياطي',
-      titleEn: 'Backup Synced',
-      message: 'تم حفظ كافة بيانات قائمة الأجهزة ومزامنتها بنجاح',
-      messageEn: 'All appliances checklist data synced successfully',
-      type: 'info',
-      read: false,
-      timestamp: '2026-11-08 02:00',
-    }
-  ]);
-
-  chatMessages = signal<ChatMessage[]>([
-    {
-      id: 'm1',
-      sender: 'أحمد محمود',
-      senderRole: 'admin',
-      text: 'مرحباً بالفريق! بدأت مراجعة أسعار الأجهزة الأساسية وإضافة ملاحظات المعارض.',
-      timestamp: '10:00 ص',
-      avatar: '👨‍💼',
-    },
-    {
-      id: 'm2',
-      sender: 'سارة علي',
-      senderRole: 'editor',
-      text: 'ممتاز، قمت بمقارنة غسالات إل جي وتورنيدو وسجلت الفرق في خانة ملاحظاتي.',
-      timestamp: '11:20 ص',
-      avatar: '👩‍💼',
-    },
-    {
-      id: 'm3',
-      sender: 'المستشار الذكي للأجهزة',
-      senderRole: 'AI Consultant',
-      text: 'أهلاً بكم! أنا هنا لمساعدتكم في مقارنة الماركات، كفاءة الطاقة، والضمان لأي جهاز في قائمتكم.',
-      timestamp: '11:21 ص',
-      avatar: '🤖',
-      isAi: true,
-    }
-  ]);
+  private unsubscribeUserWorkspace: (() => void) | null = null;
+  private activeLoadedUserId = '';
+  private firestoreWriteTimer: ReturnType<typeof setTimeout> | null = null;
 
   unreadNotificationsCount = computed(() => {
     return this.notifications().filter(n => !n.read).length;
   });
 
-  activeProject = computed(() => {
-    return this.projects().find(p => p.id === this.activeProjectId()) || this.projects()[0];
+  activeProject = computed<ProjectFolder>(() => {
+    const activeId = this.activeProjectId();
+    const list = this.projects();
+    if (!activeId || list.length === 0) {
+      return EMPTY_PROJECT_PLACEHOLDER;
+    }
+    return list.find(p => p.id === activeId) || list[0] || EMPTY_PROJECT_PLACEHOLDER;
   });
 
-  private getItemOwnerId(it: ChecklistItem): string {
-    if (it.ownerId) return it.ownerId;
-    if (it.assignee?.email === 'sara@example.com') return 'u2';
-    return 'u1';
-  }
-
   /**
-   * Account-Separated items computed signal
+   * Current Project's Items belonging to the signed-in user
    */
   currentProjectItems = computed(() => {
     const activeId = this.activeProjectId();
-    const currentUserId = this.auth.currentUser().id;
-    const scope = this.dataScope();
-    const all = this.items().filter(item => item.folderId === activeId);
-
-    if (scope === 'mine') {
-      return all.filter(it => this.getItemOwnerId(it) === currentUserId);
-    }
-    if (scope === 'published') {
-      return all.filter(it => it.isPublished === true);
-    }
-    // 'all': Show current user's own items + explicitly published shared items
-    return all.filter(it => this.getItemOwnerId(it) === currentUserId || it.isPublished === true);
+    return this.items().filter(item => (item.folderId || '') === activeId);
   });
 
-  userItemsCount = computed(() => {
-    const activeId = this.activeProjectId();
-    const currentUserId = this.auth.currentUser().id;
-    return this.items().filter(it => it.folderId === activeId && this.getItemOwnerId(it) === currentUserId).length;
-  });
-
-  publishedItemsCount = computed(() => {
-    const activeId = this.activeProjectId();
-    return this.items().filter(it => it.folderId === activeId && it.isPublished === true).length;
-  });
+  userItemsCount = computed(() => this.currentProjectItems().length);
+  publishedItemsCount = computed(() => this.currentProjectItems().length);
 
   constructor() {
     this.initClientState();
-    this.initFirestoreSync();
-    this.initSyncWatchers();
+    this.initUserWorkspaceEffect();
   }
 
   private initClientState() {
     if (typeof window === 'undefined') return;
 
-    // Load Dark Mode preference
     const savedDark = localStorage.getItem('checkmate_dark');
     if (savedDark === 'true') {
       this.isDarkMode.set(true);
       document.documentElement.classList.add('dark');
+    } else {
+      this.isDarkMode.set(false);
+      document.documentElement.classList.remove('dark');
     }
 
-    // Load cached items
-    const savedItems = localStorage.getItem('checkmate_items');
-    if (savedItems) {
-      try {
-        const parsed = JSON.parse(savedItems);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          this.items.set(parsed);
-        }
-      } catch (e) {
-        console.error('Failed to parse cached items', e);
-      }
-    }
-
-    // Load cached projects
-    const savedProjects = localStorage.getItem('checkmate_projects');
-    if (savedProjects) {
-      try {
-        const parsed = JSON.parse(savedProjects);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          this.projects.set(parsed);
-        }
-      } catch {
-        // Fallback to initial projects if cache corrupted
-      }
-    }
-
-    // Online status
     this.isOnline.set(navigator.onLine);
     window.addEventListener('online', () => {
       this.isOnline.set(true);
@@ -504,131 +560,407 @@ export class StorageService {
     });
   }
 
-  private initFirestoreSync() {
+  private getUserCacheKey(userId: string): string {
+    return `checkmate_workspace_v2_${userId}`;
+  }
+
+  private isSeededDemoAccount(userId: string): boolean {
+    return userId === 'u1' || userId === 'u2' || userId === 'u3';
+  }
+
+  private initUserWorkspaceEffect() {
     if (typeof window === 'undefined') return;
 
-    try {
-      // 1. Real-time items sync across all devices via Firestore
-      this.firebase.listenToItems((cloudItems) => {
-        if (cloudItems && cloudItems.length > 0) {
-          this.items.set(cloudItems);
-          this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-          this.hasPendingSync.set(false);
-        }
-      });
+    effect(() => {
+      const user = this.auth.currentUser();
+      if (!user || !user.id) return;
 
-      // 2. Real-time projects sync across all devices
-      this.firebase.listenToProjects((cloudProjects) => {
-        if (cloudProjects && cloudProjects.length > 0) {
-          this.projects.set(cloudProjects);
+      if (this.activeLoadedUserId !== user.id) {
+        if (this.activeLoadedUserId) {
+          this.flushPendingSync(this.activeLoadedUserId);
         }
-      });
+        this.activeLoadedUserId = user.id;
+        void this.loadUserWorkspace(user.id);
+      }
+    });
+  }
 
-      // 3. Initial seeding to Firestore if cloud collection is pristine
-      setTimeout(async () => {
-        try {
-          const currentItems = this.items();
-          if (currentItems.length > 0) {
-            // Ensure first item is in Firestore to bootstrap collection
-            await this.firebase.saveItemToFirestore(currentItems[0]);
-          }
-          const currentProjects = this.projects();
-          if (currentProjects.length > 0) {
-            await this.firebase.saveProjectToFirestore(currentProjects[0]);
-          }
-        } catch (e) {
-          console.warn('Initial cloud seed notice:', e);
-        }
-      }, 2000);
-    } catch (err) {
-      console.warn('Firestore real-time sync subscription error:', err);
+  /**
+   * Resets a newly registered user's workspace to completely empty arrays and
+   * UI Options: Light Mode (darkMode: false), Arabic ('ar'), and Active Project ""
+   */
+  resetWorkspaceForNewUser(userId: string) {
+    if (!userId) return;
+    const empty = createEmptyUserWorkspace();
+    this.projects.set(empty.projects);
+    this.items.set(empty.items);
+    this.categories.set(empty.categories);
+    this.notifications.set(empty.notifications);
+    this.chatMessages.set(empty.aiChats);
+    this.mapLocations.set(empty.mapLocations);
+    this.applyUiOptions(empty.uiOptions, false);
+
+    this.activeLoadedUserId = userId;
+    this.saveToLocalCacheOnly(userId);
+    this.auth.updateUserUiOptions(userId, empty.uiOptions);
+    void this.firebase.saveUserWorkspace(userId, empty, true);
+    this.hasPendingSync.set(false);
+    this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  }
+
+  private applyWorkspaceSnapshot(userId: string, data: CloudUserWorkspace): boolean {
+    let applied = false;
+
+    if (Array.isArray(data.projects)) {
+      this.projects.set(data.projects);
+      applied = true;
+    }
+    if (Array.isArray(data.items)) {
+      this.items.set(data.items);
+      applied = true;
+    }
+    if (Array.isArray(data.categories)) {
+      this.categories.set(data.categories);
+      applied = true;
+    }
+    if (Array.isArray(data.notifications)) {
+      this.notifications.set(data.notifications as AppNotification[]);
+      applied = true;
+    }
+    if (Array.isArray(data.aiChats)) {
+      this.chatMessages.set(data.aiChats as ChatMessage[]);
+      applied = true;
+    }
+    if (Array.isArray(data.mapLocations)) {
+      this.mapLocations.set(data.mapLocations);
+      applied = true;
+    }
+    if (data.uiOptions) {
+      this.applyUiOptions(data.uiOptions, false);
+      applied = true;
+    }
+
+    if (applied) {
+      this.saveToLocalCacheOnly(userId);
+    }
+    return applied;
+  }
+
+  async loadUserWorkspace(userId: string) {
+    if (typeof window === 'undefined' || !userId) return;
+
+    // 1. Unsubscribe previous user listener
+    if (this.unsubscribeUserWorkspace) {
+      this.unsubscribeUserWorkspace();
+      this.unsubscribeUserWorkspace = null;
+    }
+
+    // 2. Check if user profile in AuthService already carries workspace / uiOptions (e.g. newly created user)
+    const userProfile = this.auth.users().find(u => u.id === userId);
+    const cacheKey = this.getUserCacheKey(userId);
+    const raw = localStorage.getItem(cacheKey);
+    let hasLoadedState = false;
+
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as CloudUserWorkspace;
+        hasLoadedState = this.applyWorkspaceSnapshot(userId, parsed);
+      } catch (e) {
+        console.warn('Failed parsing user workspace cache', e);
+      }
+    }
+
+    if (!hasLoadedState && userProfile && (Array.isArray(userProfile.projects) || userProfile.uiOptions)) {
+      hasLoadedState = this.applyWorkspaceSnapshot(userId, userProfile);
+    }
+
+    if (!hasLoadedState) {
+      if (this.isSeededDemoAccount(userId)) {
+        const userProjects = INITIAL_PROJECTS.map(p => ({ ...p, ownerId: userId }));
+        const userItems = INITIAL_ITEMS.map(it => ({ ...it, ownerId: userId }));
+        this.projects.set(userProjects);
+        this.items.set(userItems);
+        this.categories.set([...DEFAULT_CATEGORIES]);
+        this.notifications.set([...INITIAL_NOTIFICATIONS]);
+        this.chatMessages.set([...INITIAL_AI_CHATS]);
+        this.mapLocations.set([...DEFAULT_MAP_LOCATIONS]);
+        this.applyUiOptions(
+          {
+            darkMode: this.isDarkMode(),
+            language: this.i18n.currentLang(),
+            activeProjectId: userProjects[0].id,
+          },
+          false
+        );
+        this.saveToLocalCacheOnly(userId);
+      } else {
+        // New user account: initialize completely empty workspace and Light Mode + Arabic + Active Project ""
+        this.resetWorkspaceForNewUser(userId);
+      }
+    }
+
+    // 3. Explicitly fetch latest user workspace & UI options from Firestore database upon Sign-In / Switch
+    const cloudRecord = await this.firebase.fetchUserWorkspaceFromFirestore(userId);
+    if (cloudRecord && this.activeLoadedUserId === userId) {
+      const updated = this.applyWorkspaceSnapshot(userId, cloudRecord);
+      if (updated) {
+        this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        this.hasPendingSync.set(false);
+      } else if (!this.isSeededDemoAccount(userId)) {
+        // Ensure Firestore has the clean empty state if record had no workspace fields yet
+        void this.firebase.saveUserWorkspace(userId, this.buildCurrentWorkspacePayload(), true);
+      }
+    }
+
+    // 4. Subscribe to Firestore `users/{userId}` real-time updates
+    this.unsubscribeUserWorkspace = this.firebase.listenToUserWorkspace(userId, (cloudData) => {
+      if (this.activeLoadedUserId !== userId) return;
+      const updatedFromCloud = this.applyWorkspaceSnapshot(userId, cloudData);
+      if (updatedFromCloud) {
+        this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        this.hasPendingSync.set(false);
+      }
+    });
+  }
+
+  applyUiOptions(opts?: Partial<UserUiOptions> | null, persistToDb = false) {
+    const normalized = normalizeUiOptions(opts);
+
+    // 1. Apply Dark / Light Mode
+    this.isDarkMode.set(normalized.darkMode);
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', normalized.darkMode);
+    }
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('checkmate_dark', String(normalized.darkMode));
+    }
+
+    // 2. Apply Language ('ar' | 'en')
+    if (this.i18n.currentLang() !== normalized.language) {
+      this.i18n.setLanguage(normalized.language);
+    }
+
+    // 3. Apply Active Project ID (supports "" when no project is active)
+    if (normalized.activeProjectId === '') {
+      this.activeProjectId.set('');
+    } else if (this.projects().some(p => p.id === normalized.activeProjectId)) {
+      this.activeProjectId.set(normalized.activeProjectId);
+    } else {
+      this.activeProjectId.set(this.projects()[0]?.id || '');
+    }
+
+    const userId = this.auth.currentUser()?.id;
+    if (userId) {
+      const finalUiOptions = this.getCurrentUiOptions();
+      this.auth.updateUserUiOptions(userId, finalUiOptions);
+      if (persistToDb) {
+        this.saveToLocalCacheOnly(userId);
+        void this.firebase.saveUiOptionsToFirestore(userId, finalUiOptions);
+        this.persistUserWorkspace();
+      }
     }
   }
 
-  private initSyncWatchers() {
-    // Save to local storage whenever items change
-    effect(() => {
-      const items = this.items();
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem('checkmate_items', JSON.stringify(items));
-      }
-    });
+  getCurrentUiOptions(): UserUiOptions {
+    return {
+      darkMode: this.isDarkMode(),
+      language: this.i18n.currentLang(),
+      activeProjectId: this.activeProjectId(),
+    };
+  }
 
-    // Auto-fetch latest cloud state on startup
-    if (typeof window !== 'undefined') {
-      setTimeout(() => this.fetchFromServer(), 1000);
-      // Periodic background sync every 60 seconds
-      setInterval(() => {
-        if (this.isOnline()) {
-          this.syncWithServer();
-        }
-      }, 60000);
+  private buildCurrentWorkspacePayload(): CloudUserWorkspace {
+    return {
+      projects: this.projects(),
+      items: this.items(),
+      categories: this.categories(),
+      notifications: this.notifications(),
+      uiOptions: this.getCurrentUiOptions(),
+      aiChats: this.chatMessages(),
+      mapLocations: this.mapLocations(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  private saveToLocalCacheOnly(userId: string) {
+    if (typeof window === 'undefined' || !window.localStorage || !userId) return;
+    const payload = this.buildCurrentWorkspacePayload();
+    localStorage.setItem(this.getUserCacheKey(userId), JSON.stringify(payload));
+  }
+
+  /**
+   * Immediately flushes any pending workspace or UI Option changes to localStorage and Firestore
+   * before signing out or switching accounts.
+   */
+  flushPendingSync(targetUserId?: string) {
+    const userId = targetUserId || this.activeLoadedUserId || this.auth.currentUser()?.id;
+    if (!userId) return;
+
+    if (this.firestoreWriteTimer) {
+      clearTimeout(this.firestoreWriteTimer);
+      this.firestoreWriteTimer = null;
     }
+
+    const uiOpts = this.getCurrentUiOptions();
+    this.auth.updateUserUiOptions(userId, uiOpts);
+    this.saveToLocalCacheOnly(userId);
+    const payload = this.buildCurrentWorkspacePayload();
+    void this.firebase.saveUserWorkspace(userId, payload, true);
+    this.hasPendingSync.set(false);
+    this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  }
+
+  /**
+   * Saves immediately to localStorage and debounces Firestore write (400ms) to avoid rate limit spikes.
+   */
+  persistUserWorkspace() {
+    const userId = this.auth.currentUser()?.id;
+    if (!userId) return;
+
+    const uiOpts = this.getCurrentUiOptions();
+    this.auth.updateUserUiOptions(userId, uiOpts);
+    this.saveToLocalCacheOnly(userId);
+
+    if (this.firestoreWriteTimer) {
+      clearTimeout(this.firestoreWriteTimer);
+    }
+
+    this.firestoreWriteTimer = setTimeout(() => {
+      this.firestoreWriteTimer = null;
+      const payload = this.buildCurrentWorkspacePayload();
+      void this.firebase.saveUserWorkspace(userId, payload);
+      this.hasPendingSync.set(false);
+      this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    }, 400);
   }
 
   toggleDarkMode() {
     const next = !this.isDarkMode();
     this.isDarkMode.set(next);
     if (typeof document !== 'undefined') {
-      if (next) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+      document.documentElement.classList.toggle('dark', next);
       localStorage.setItem('checkmate_dark', String(next));
+    }
+    const userId = this.auth.currentUser()?.id;
+    if (userId) {
+      const uiOpts = this.getCurrentUiOptions();
+      this.auth.updateUserUiOptions(userId, uiOpts);
+      void this.firebase.saveUiOptionsToFirestore(userId, uiOpts);
+    }
+    this.persistUserWorkspace();
+  }
+
+  toggleLanguage() {
+    this.i18n.toggleLanguage();
+    const userId = this.auth.currentUser()?.id;
+    if (userId) {
+      const uiOpts = this.getCurrentUiOptions();
+      this.auth.updateUserUiOptions(userId, uiOpts);
+      void this.firebase.saveUiOptionsToFirestore(userId, uiOpts);
+    }
+    this.persistUserWorkspace();
+  }
+
+  setLanguage(lang: Language) {
+    this.i18n.setLanguage(lang);
+    const userId = this.auth.currentUser()?.id;
+    if (userId) {
+      const uiOpts = this.getCurrentUiOptions();
+      this.auth.updateUserUiOptions(userId, uiOpts);
+      void this.firebase.saveUiOptionsToFirestore(userId, uiOpts);
+    }
+    this.persistUserWorkspace();
+  }
+
+  selectProject(projectId: string) {
+    this.activeProjectId.set(projectId || '');
+    const userId = this.auth.currentUser()?.id;
+    if (userId) {
+      const uiOpts = this.getCurrentUiOptions();
+      this.auth.updateUserUiOptions(userId, uiOpts);
+      void this.firebase.saveUiOptionsToFirestore(userId, uiOpts);
+    }
+    this.persistUserWorkspace();
+  }
+
+  addCategory(cat: string) {
+    const clean = (cat || '').trim();
+    if (!clean) return;
+    if (!this.categories().includes(clean)) {
+      this.categories.update(prev => [...prev, clean]);
+      this.persistUserWorkspace();
     }
   }
 
-  toggleItemStatus(id: string, targetStatus?: ItemStatus) {
-    let updatedItemRef: ChecklistItem | undefined;
+  addMapLocation(loc: Omit<MapLocation, 'id'>): MapLocation {
+    const newLoc: MapLocation = {
+      ...loc,
+      id: 'loc-' + Date.now(),
+    };
+    this.mapLocations.update(prev => [newLoc, ...prev]);
+    this.persistUserWorkspace();
+    return newLoc;
+  }
 
+  deleteMapLocation(locId: string) {
+    this.mapLocations.update(prev => prev.filter(l => l.id !== locId));
+    this.persistUserWorkspace();
+  }
+
+  toggleItemStatus(id: string, targetStatus?: ItemStatus) {
     this.items.update(prev =>
       prev.map(item => {
         if (item.id === id) {
           let nextStatus: ItemStatus = targetStatus || 'pending';
           if (!targetStatus) {
-            // cycle: pending -> comparing -> purchased -> delivered -> pending
             if (item.status === 'pending') nextStatus = 'comparing';
             else if (item.status === 'comparing') nextStatus = 'purchased';
             else if (item.status === 'purchased') nextStatus = 'delivered';
             else nextStatus = 'pending';
           }
-          const updated: ChecklistItem = {
+          return {
             ...item,
             status: nextStatus,
             updatedAt: new Date().toISOString(),
           };
-          updatedItemRef = updated;
-          return updated;
         }
         return item;
       })
     );
     this.hasPendingSync.set(true);
-
-    if (updatedItemRef) {
-      this.firebase.saveItemToFirestore(updatedItemRef);
-    }
+    this.persistUserWorkspace();
   }
 
   updateItem(updatedItem: ChecklistItem) {
-    const itemWithTime = { ...updatedItem, updatedAt: new Date().toISOString() };
+    const itemWithTime: ChecklistItem = {
+      ...updatedItem,
+      storeName: updatedItem.storeLocation || updatedItem.storeName || '',
+      storeLocation: updatedItem.storeLocation || updatedItem.storeName || '',
+      updatedAt: new Date().toISOString(),
+    };
+    if (itemWithTime.category) {
+      this.addCategory(itemWithTime.category);
+    }
     this.items.update(prev =>
       prev.map(item => (item.id === updatedItem.id ? itemWithTime : item))
     );
     this.hasPendingSync.set(true);
-    this.firebase.saveItemToFirestore(itemWithTime);
+    this.persistUserWorkspace();
   }
 
   addItem(newItem: Omit<ChecklistItem, 'id' | 'createdAt' | 'updatedAt' | 'itemNumber'>) {
     const currentMaxNo = this.items().reduce((max, it) => Math.max(max, it.itemNumber || 0), 0);
     const currentUserId = this.auth.currentUser().id;
+    if (newItem.category && !this.categories().includes(newItem.category.trim())) {
+      this.categories.update(prev => [...prev, newItem.category.trim()]);
+    }
     const item: ChecklistItem = {
       ...newItem,
       id: 'item-' + Date.now(),
       itemNumber: currentMaxNo + 1,
-      ownerId: newItem.ownerId || currentUserId,
-      isPublished: newItem.isPublished !== undefined ? newItem.isPublished : true,
+      ownerId: currentUserId,
+      storeLocation: newItem.storeLocation || newItem.storeName || '',
+      storeName: newItem.storeLocation || newItem.storeName || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       attachments: newItem.attachments || [],
@@ -636,7 +968,6 @@ export class StorageService {
     };
     this.items.update(prev => [...prev, item]);
     this.hasPendingSync.set(true);
-    this.firebase.saveItemToFirestore(item);
 
     this.addNotification({
       title: `تمت إضافة ${item.titleAr || item.titleEn}`,
@@ -647,48 +978,27 @@ export class StorageService {
     });
   }
 
-  togglePublishItem(itemId: string) {
-    let updatedItemRef: ChecklistItem | undefined;
-    this.items.update(prev =>
-      prev.map(it => {
-        if (it.id === itemId) {
-          const nextPub = !it.isPublished;
-          const updated: ChecklistItem = {
-            ...it,
-            isPublished: nextPub,
-            updatedAt: new Date().toISOString()
-          };
-          updatedItemRef = updated;
-          return updated;
-        }
-        return it;
-      })
-    );
-    this.hasPendingSync.set(true);
-    if (updatedItemRef) {
-      this.firebase.saveItemToFirestore(updatedItemRef);
-    }
-  }
-
   importBatchItems(
     batch: Omit<ChecklistItem, 'id' | 'createdAt' | 'updatedAt'>[],
-    targetFolderId?: string,
-    isPublished = true
+    targetFolderId?: string
   ): number {
     const currentUserId = this.auth.currentUser().id;
     const folderId = targetFolderId || this.activeProjectId();
     let currentMax = this.items().reduce((max, it) => Math.max(max, it.itemNumber || 0), 0);
     const now = new Date().toISOString();
+    const newCategories = new Set(this.categories());
 
     const createdItems: ChecklistItem[] = batch.map((it, idx) => {
       currentMax++;
+      if (it.category && it.category.trim()) {
+        newCategories.add(it.category.trim());
+      }
       return {
         ...it,
         id: 'item-' + Date.now() + '-' + idx,
         itemNumber: it.itemNumber || currentMax,
         folderId,
         ownerId: currentUserId,
-        isPublished,
         createdAt: now,
         updatedAt: now,
         attachments: it.attachments || [],
@@ -696,11 +1006,9 @@ export class StorageService {
       };
     });
 
+    this.categories.set(Array.from(newCategories));
     this.items.update(prev => [...prev, ...createdItems]);
     this.hasPendingSync.set(true);
-
-    // Save batch to Firestore
-    createdItems.forEach(item => this.firebase.saveItemToFirestore(item));
 
     this.addNotification({
       title: 'تم استيراد بيانات Google Sheets',
@@ -716,27 +1024,35 @@ export class StorageService {
   deleteItem(id: string) {
     this.items.update(prev => prev.filter(item => item.id !== id));
     this.hasPendingSync.set(true);
-    this.firebase.deleteItemFromFirestore(id);
+    this.persistUserWorkspace();
   }
 
   addProject(project: Omit<ProjectFolder, 'id'>) {
     const newProject: ProjectFolder = {
       ...project,
       id: 'proj-' + Date.now(),
+      ownerId: this.auth.currentUser().id,
     };
+    const wasNoProject = !this.activeProjectId() || this.projects().length === 0;
     this.projects.update(prev => [...prev, newProject]);
-    this.activeProjectId.set(newProject.id);
+    if (wasNoProject) {
+      // Associate any items that were added while activeProjectId was "" with this new project
+      this.items.update(prev =>
+        prev.map(it => (!it.folderId ? { ...it, folderId: newProject.id } : it))
+      );
+    }
+    this.selectProject(newProject.id);
     this.hasPendingSync.set(true);
-    this.firebase.saveProjectToFirestore(newProject);
+    this.persistUserWorkspace();
   }
 
   deleteProject(id: string) {
-    if (this.projects().length <= 1) return;
     this.projects.update(prev => prev.filter(p => p.id !== id));
     this.items.update(prev => prev.filter(item => item.folderId !== id));
-    this.activeProjectId.set(this.projects()[0].id);
+    const remaining = this.projects();
+    this.selectProject(remaining[0]?.id || '');
     this.hasPendingSync.set(true);
-    this.firebase.deleteProjectFromFirestore(id);
+    this.persistUserWorkspace();
   }
 
   addComment(itemId: string, text: string, userName: string, avatar = '👤') {
@@ -747,26 +1063,21 @@ export class StorageService {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       avatar,
     };
-    let updatedItemRef: ChecklistItem | undefined;
 
     this.items.update(prev =>
       prev.map(it => {
         if (it.id === itemId) {
-          const updated = {
+          return {
             ...it,
             comments: [...(it.comments || []), comment],
             updatedAt: new Date().toISOString(),
           };
-          updatedItemRef = updated;
-          return updated;
         }
         return it;
       })
     );
     this.hasPendingSync.set(true);
-    if (updatedItemRef) {
-      this.firebase.saveItemToFirestore(updatedItemRef);
-    }
+    this.persistUserWorkspace();
   }
 
   addAttachment(itemId: string, attachment: { name: string; size: string; type: 'pdf' | 'image' | 'doc'; url?: string }) {
@@ -775,47 +1086,40 @@ export class StorageService {
       date: new Date().toISOString().split('T')[0],
       ...attachment,
     };
-    let updatedItemRef: ChecklistItem | undefined;
 
     this.items.update(prev =>
       prev.map(it => {
         if (it.id === itemId) {
-          const updated = {
+          return {
             ...it,
             attachments: [...(it.attachments || []), newAtt],
             updatedAt: new Date().toISOString(),
           };
-          updatedItemRef = updated;
-          return updated;
         }
         return it;
       })
     );
     this.hasPendingSync.set(true);
-    if (updatedItemRef) {
-      this.firebase.saveItemToFirestore(updatedItemRef);
-    }
+    this.persistUserWorkspace();
   }
 
-  postChatMessage(text: string, sender: string, senderRole: string, avatar = '👤') {
+  postChatMessage(text: string, sender: string, senderRole: string, avatar = '👤', isAi = false) {
     const msg: ChatMessage = {
-      id: 'msg_' + Date.now(),
+      id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
       sender,
       senderRole,
       text,
       avatar,
+      isAi,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     this.chatMessages.update(prev => [...prev, msg]);
+    this.persistUserWorkspace();
+  }
 
-    // Send to backend
-    if (this.isOnline()) {
-      fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(msg),
-      }).catch(err => console.warn('Chat sync offline fallback', err));
-    }
+  clearAiChats() {
+    this.chatMessages.set([]);
+    this.persistUserWorkspace();
   }
 
   addNotification(notif: Omit<AppNotification, 'id' | 'read' | 'timestamp'>) {
@@ -826,19 +1130,20 @@ export class StorageService {
       timestamp: new Date().toISOString(),
     };
     this.notifications.update(prev => [newN, ...prev]);
+    this.persistUserWorkspace();
 
-    // Browser Notification API if supported
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       try {
         new Notification(newN.title, { body: newN.message, icon: '/favicon.ico' });
       } catch {
-        // Notification permission or creation failed
+        // Ignore browser notification errors
       }
     }
   }
 
   markAllNotificationsRead() {
     this.notifications.update(prev => prev.map(n => ({ ...n, read: true })));
+    this.persistUserWorkspace();
   }
 
   requestPushNotifications() {
@@ -857,34 +1162,8 @@ export class StorageService {
     }
   }
 
-  async fetchFromServer() {
-    if (!this.isOnline()) return;
-    try {
-      this.isSyncing.set(true);
-      const res = await fetch('/api/sync');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data) {
-          if (json.data.items && json.data.items.length > 0 && !this.hasPendingSync()) {
-            this.items.set(json.data.items);
-          }
-          if (json.data.projects && json.data.projects.length > 0) {
-            this.projects.set(json.data.projects);
-          }
-          if (json.data.messages && json.data.messages.length > 0) {
-            this.chatMessages.set(json.data.messages);
-          }
-          this.lastSyncTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        }
-      }
-    } catch (e) {
-      console.warn('Sync fetch skipped or offline', e);
-    } finally {
-      this.isSyncing.set(false);
-    }
-  }
-
   async syncWithServer() {
+    this.persistUserWorkspace();
     if (!this.isOnline()) return;
     try {
       this.isSyncing.set(true);
@@ -912,12 +1191,16 @@ export class StorageService {
 
   backupToJson(): string {
     const data = {
-      version: '1.0',
+      version: '2.0',
       exportedAt: new Date().toISOString(),
+      userId: this.auth.currentUser().id,
       projects: this.projects(),
       items: this.items(),
+      categories: this.categories(),
       notifications: this.notifications(),
-      messages: this.chatMessages(),
+      uiOptions: this.getCurrentUiOptions(),
+      aiChats: this.chatMessages(),
+      mapLocations: this.mapLocations(),
     };
     return JSON.stringify(data, null, 2);
   }
@@ -931,8 +1214,15 @@ export class StorageService {
       if (data.projects && Array.isArray(data.projects)) {
         this.projects.set(data.projects);
       }
+      if (data.categories && Array.isArray(data.categories)) {
+        this.categories.set(data.categories);
+      }
+      if (data.mapLocations && Array.isArray(data.mapLocations)) {
+        this.mapLocations.set(data.mapLocations);
+      }
       this.hasPendingSync.set(true);
-      this.syncWithServer();
+      this.persistUserWorkspace();
+      void this.syncWithServer();
       return true;
     } catch (e) {
       console.error('Invalid backup JSON', e);

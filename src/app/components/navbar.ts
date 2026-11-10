@@ -42,6 +42,11 @@ import { AuthService, UserProfile } from '../services/auth.service';
               [attr.aria-label]="i18n.t().allProjects"
               class="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[11px] font-semibold text-slate-800 dark:text-slate-200 truncate focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
+              @if (storage.projects().length === 0 || !storage.activeProjectId()) {
+                <option value="">
+                  {{ i18n.isRtl() ? 'لا يوجد مشروع نشط' : 'No Active Project' }}
+                </option>
+              }
               @for (proj of storage.projects(); track proj.id) {
                 <option [value]="proj.id">
                   {{ i18n.isRtl() ? proj.nameAr : proj.nameEn }}
@@ -91,6 +96,10 @@ import { AuthService, UserProfile } from '../services/auth.service';
                         <mat-icon class="text-blue-600 dark:text-blue-400 text-base">check</mat-icon>
                       }
                     </button>
+                  } @empty {
+                    <div class="px-3 py-3 text-xs text-slate-400 text-center">
+                      {{ i18n.isRtl() ? 'لا توجد مشاريع حالياً. أنشئ مشروعاً جديداً للبدء.' : 'No projects yet. Create a new project to start.' }}
+                    </div>
                   }
                   <div class="border-t border-slate-100 dark:border-slate-800 my-1 pt-1">
                     <button
@@ -184,15 +193,6 @@ import { AuthService, UserProfile } from '../services/auth.service';
                   >
                     <mat-icon class="text-emerald-600 dark:text-emerald-400 text-base">table_chart</mat-icon>
                     <span>{{ i18n.t().importGoogleSheets }}</span>
-                  </button>
-                  <div class="border-t border-slate-100 dark:border-slate-800 my-1"></div>
-                  <button
-                    type="button"
-                    (click)="workspaceModalTrigger()"
-                    class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition cursor-pointer font-medium"
-                  >
-                    <mat-icon class="text-blue-600 dark:text-blue-400 text-base">cloud_sync</mat-icon>
-                    <span>Google Workspace &amp; Cloud</span>
                   </button>
                   <div class="border-t border-slate-100 dark:border-slate-800 my-1"></div>
                   <button
@@ -300,7 +300,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
             <!-- Language Switcher -->
             <button
               type="button"
-              (click)="i18n.toggleLanguage()"
+              (click)="onToggleLanguage()"
               class="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer flex items-center gap-1"
               title="Toggle Language"
             >
@@ -434,6 +434,11 @@ import { AuthService, UserProfile } from '../services/auth.service';
                 (change)="onMobileProjectSelect($event)"
                 class="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               >
+                @if (storage.projects().length === 0 || !storage.activeProjectId()) {
+                  <option value="">
+                    {{ i18n.isRtl() ? 'لا يوجد مشروع نشط' : 'No Active Project' }}
+                  </option>
+                }
                 @for (proj of storage.projects(); track proj.id) {
                   <option [value]="proj.id">
                     {{ i18n.isRtl() ? proj.nameAr : proj.nameEn }}
@@ -494,19 +499,10 @@ import { AuthService, UserProfile } from '../services/auth.service';
             <button
               type="button"
               (click)="onOpenAuthModal(); showMobileMenu.set(false)"
-              class="p-2.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+              class="col-span-2 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <mat-icon class="text-base">manage_accounts</mat-icon>
               <span>{{ i18n.isRtl() ? 'الحسابات والدخول' : 'Sign In & Accounts' }}</span>
-            </button>
-
-            <button
-              type="button"
-              (click)="workspaceModalTrigger(); showMobileMenu.set(false)"
-              class="p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <mat-icon class="text-base">cloud_sync</mat-icon>
-              <span>Google Workspace</span>
             </button>
 
             <button
@@ -555,7 +551,6 @@ export class NavbarComponent {
 
   openNewProjectModal = output<void>();
   openAuthModal = output<void>();
-  openWorkspaceModal = output<void>();
   openGoogleSheetImport = output<void>();
   triggerPdfExport = output<void>();
   triggerCsvExport = output<void>();
@@ -609,20 +604,23 @@ export class NavbarComponent {
     this.showExportMenu.set(false);
   }
 
+  onToggleLanguage() {
+    this.storage.toggleLanguage();
+  }
+
   selectProject(id: string) {
-    this.storage.activeProjectId.set(id);
+    this.storage.selectProject(id);
     this.showProjectsMenu.set(false);
   }
 
   onMobileProjectSelect(event: Event) {
     const id = (event.target as HTMLSelectElement).value;
-    if (id) {
-      this.storage.activeProjectId.set(id);
-      this.showMobileMenu.set(false);
-    }
+    this.storage.selectProject(id);
+    this.showMobileMenu.set(false);
   }
 
   switchUser(user: UserProfile) {
+    this.storage.flushPendingSync();
     this.auth.loginAs(user);
     this.storage.dataScope.set('mine');
     this.showUserMenu.set(false);
@@ -647,12 +645,8 @@ export class NavbarComponent {
 
   onLogout() {
     this.showUserMenu.set(false);
+    this.storage.flushPendingSync();
     this.auth.logout(false);
-  }
-
-  workspaceModalTrigger() {
-    this.showExportMenu.set(false);
-    this.openWorkspaceModal.emit();
   }
 
   exportPdfTrigger() {

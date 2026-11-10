@@ -23,10 +23,10 @@ import { ChecklistItem } from '../core/checklist-rules';
             </div>
             <div>
               <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">
-                {{ i18n.t().comments }} - {{ item().titleAr }}
+                {{ i18n.t().comments }} - {{ i18n.isRtl() ? item().titleAr : (item().titleEn || item().titleAr) }}
               </h3>
               <p class="text-xs text-slate-400">
-                مناقشات وملاحظات فريق الشراء والتنفيذ
+                {{ i18n.isRtl() ? 'مناقشات وملاحظات الشراء والتنفيذ لهذا الصنف' : 'Item discussion, showroom comparisons, and purchase notes' }}
               </p>
             </div>
           </div>
@@ -57,7 +57,9 @@ import { ChecklistItem } from '../core/checklist-rules';
           } @empty {
             <div class="py-12 text-center text-xs text-slate-400">
               <mat-icon class="text-3xl text-slate-300 dark:text-slate-600">chat_bubble_outline</mat-icon>
-              <p class="mt-1">لا توجد تعليقات لهذا الصنف بعد. كن أول من يضيف ملاحظة!</p>
+              <p class="mt-1">
+                {{ i18n.isRtl() ? 'لا توجد تعليقات لهذا الصنف بعد. كن أول من يضيف ملاحظة!' : 'No comments for this item yet. Add your first note below!' }}
+              </p>
             </div>
           }
         </div>

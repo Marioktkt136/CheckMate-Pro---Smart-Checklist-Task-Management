@@ -1,8 +1,14 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { UserRole } from '../core/checklist-rules';
+import {
+  UserRole,
+  UserUiOptions,
+  generateSecureRandomPassword,
+  createEmptyUserWorkspace,
+  normalizeUiOptions,
+} from '../core/checklist-rules';
 import { FirebaseService, CloudUserRecord } from './firebase.service';
 
-export type AuthProviderType = 'email' | 'google' | 'facebook' | 'apple';
+export type AuthProviderType = 'email' | 'google';
 
 export interface UserProfile extends CloudUserRecord {
   id: string;
@@ -50,7 +56,7 @@ export const INITIAL_USERS: UserProfile[] = [
     nameEn: 'Marion Bedrous',
     username: 'marion',
     email: 'marionbedrous@gmail.com',
-    password: 'password123',
+    password: 'Ggl#9xK2!mP8vQ4zR7wL5nJ1',
     role: 'admin',
     avatar: '✨',
     department: 'مالك المشروع / Owner',
@@ -77,7 +83,7 @@ export class AuthService {
   sessionRemainingMinutes = signal<number>(60);
   sessionExpiredNotice = signal<string | null>(null);
 
-  // Controls the Auth modal (Sign-in / Sign-up)
+  // Unified modal state
   showAuthModal = signal<boolean>(false);
 
   isAdmin = computed(() => this.isAuthenticated() && this.currentUser().role === 'admin');
@@ -91,8 +97,31 @@ export class AuthService {
     this.initSession();
   }
 
+  private getDeletedUserIds(): Set<string> {
+    if (typeof window === 'undefined' || !window.localStorage) return new Set();
+    try {
+      const raw = localStorage.getItem('checkmate_deleted_user_ids');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return new Set(parsed);
+      }
+    } catch {
+      // Ignore parse error
+    }
+    return new Set();
+  }
+
+  private addDeletedUserId(id: string) {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    const set = this.getDeletedUserIds();
+    set.add(id);
+    localStorage.setItem('checkmate_deleted_user_ids', JSON.stringify(Array.from(set)));
+  }
+
   private initUsers() {
     if (typeof window === 'undefined') return;
+
+    const deletedIds = this.getDeletedUserIds();
 
     if (window.localStorage) {
       const savedUsers = localStorage.getItem('checkmate_managed_users');
@@ -100,19 +129,33 @@ export class AuthService {
         try {
           const parsed = JSON.parse(savedUsers);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const normalized: UserProfile[] = parsed.map((u: Partial<UserProfile>, idx: number) => ({
-              id: u.id || 'u_' + idx,
-              name: u.name || 'مستخدم',
-              nameEn: u.nameEn || u.name || 'User',
-              username: u.username || (u.email ? u.email.split('@')[0] : 'user_' + idx),
-              email: u.email || `user_${idx}@checkmate.local`,
-              password: u.password || 'password123',
-              role: (u.role as UserRole) || 'editor',
-              avatar: u.avatar || '👤',
-              department: u.department || 'فريق العمل',
-              provider: u.provider || 'email',
-            }));
-            this.users.set(normalized);
+            const normalized: UserProfile[] = parsed
+              .filter((u: Partial<UserProfile>) => !u.id || !deletedIds.has(u.id))
+              .map((u: Partial<UserProfile>, idx: number) => {
+                const isGoogle = u.provider === 'google';
+                const resolvedPassword =
+                  u.password && (!isGoogle || u.password !== 'password123')
+                    ? u.password
+                    : isGoogle
+                      ? generateSecureRandomPassword(24)
+                      : 'password123';
+                return {
+                  ...u,
+                  id: u.id || 'u_' + idx,
+                  name: u.name || 'مستخدم',
+                  nameEn: u.nameEn || u.name || 'User',
+                  username: u.username || (u.email ? u.email.split('@')[0] : 'user_' + idx),
+                  email: u.email || `user_${idx}@checkmate.local`,
+                  password: resolvedPassword,
+                  role: (u.role as UserRole) || 'editor',
+                  avatar: u.avatar || '👤',
+                  department: u.department || 'فريق العمل',
+                  provider: isGoogle ? 'google' : 'email',
+                };
+              });
+            if (normalized.length > 0) {
+              this.users.set(normalized);
+            }
           }
         } catch (e) {
           console.warn('Failed parsing saved users', e);
@@ -124,51 +167,107 @@ export class AuthService {
         const found = this.users().find(u => u.id === savedUserId);
         if (found) {
           this.currentUser.set(found);
+        } else if (this.users().length > 0) {
+          this.currentUser.set(this.users()[0]);
         }
+      } else if (this.users().length > 0) {
+        this.currentUser.set(this.users()[0]);
       }
     }
 
-    // Sync users from Firestore (browser only)
-    try {
-      this.firebase.listenToUsers((cloudUsers) => {
-        if (Array.isArray(cloudUsers) && cloudUsers.length > 0) {
-          const mapped: UserProfile[] = cloudUsers.map(u => {
-            const existing = this.users().find(x => x.id === u.id);
-            return {
-              id: u.id,
-              name: u.name,
-              nameEn: u.nameEn || u.name,
-              username: u.username || existing?.username || u.email.split('@')[0],
-              email: u.email,
-              password: u.password || existing?.password || 'password123',
-              role: (u.role as UserRole) || 'editor',
-              avatar: u.avatar || '👤',
-              department: u.department || 'فريق العمل',
-              provider: u.provider || existing?.provider || 'email',
-            };
-          });
-          this.users.set(mapped);
-          const currentId = this.currentUser().id;
-          const stillThere = mapped.find(u => u.id === currentId);
-          if (stillThere) {
-            this.currentUser.set(stillThere);
-          } else if (mapped.length > 0) {
-            this.currentUser.set(mapped[0]);
-            if (typeof window !== 'undefined' && window.localStorage && this.isAuthenticated()) {
-              localStorage.setItem('checkmate_user_id', mapped[0].id);
-            }
-          }
-        }
+    // One-time sync of users from Firestore on boot
+    void this.syncUsersFromDatabase();
+  }
+
+  private mergeCloudUsers(cloudUsers: CloudUserRecord[]) {
+    const currentDeleted = this.getDeletedUserIds();
+    const mapped: UserProfile[] = cloudUsers
+      .filter(u => u && u.id && u.email && !currentDeleted.has(u.id))
+      .map(u => {
+        const existing = this.users().find(
+          x => x.id === u.id || x.email.toLowerCase() === u.email.toLowerCase()
+        );
+        const isGoogle = u.provider === 'google' || existing?.provider === 'google';
+        const rawPass = u.password || existing?.password;
+        const resolvedPassword =
+          rawPass && (!isGoogle || rawPass !== 'password123')
+            ? rawPass
+            : isGoogle
+              ? generateSecureRandomPassword(24)
+              : 'password123';
+
+        return {
+          ...existing,
+          ...u,
+          id: u.id,
+          name: u.name || existing?.name || u.email.split('@')[0],
+          nameEn: u.nameEn || u.name || existing?.nameEn || u.email.split('@')[0],
+          username: u.username || existing?.username || u.email.split('@')[0],
+          email: u.email,
+          password: resolvedPassword,
+          role: (u.role as UserRole) || existing?.role || 'editor',
+          avatar: u.avatar || existing?.avatar || '👤',
+          department: u.department || existing?.department || 'فريق العمل',
+          provider: isGoogle ? 'google' : 'email',
+          uiOptions: u.uiOptions ? normalizeUiOptions(u.uiOptions) : existing?.uiOptions,
+        };
       });
-    } catch (e) {
-      console.warn('Firestore users sync skipped', e);
+
+    if (mapped.length > 0) {
+      this.persistUsers(mapped);
+      const currentId = this.currentUser().id;
+      const stillThere = mapped.find(u => u.id === currentId);
+      if (stillThere) {
+        const curr = this.currentUser();
+        if (
+          curr.name !== stillThere.name ||
+          curr.email !== stillThere.email ||
+          curr.role !== stillThere.role ||
+          JSON.stringify(curr.uiOptions) !== JSON.stringify(stillThere.uiOptions)
+        ) {
+          this.currentUser.set(stillThere);
+        }
+      } else {
+        this.currentUser.set(mapped[0]);
+        if (typeof window !== 'undefined' && window.localStorage && this.isAuthenticated()) {
+          localStorage.setItem('checkmate_user_id', mapped[0].id);
+        }
+      }
     }
+  }
+
+  /**
+   * Queries Firestore database first to ensure our local users list is up-to-date
+   */
+  async syncUsersFromDatabase(): Promise<UserProfile[]> {
+    const cloudUsers = await this.firebase.fetchUsersFromFirestore();
+    if (cloudUsers.length > 0) {
+      this.mergeCloudUsers(cloudUsers);
+    } else if (typeof window !== 'undefined' && !localStorage.getItem('checkmate_users_seeded')) {
+      localStorage.setItem('checkmate_users_seeded', 'true');
+      for (const u of this.users()) {
+        void this.firebase.saveUserToFirestore(u);
+      }
+    }
+    return this.users();
+  }
+
+  /**
+   * Finds a user account in the database by username or email
+   */
+  findAccountInDatabase(identifier: string): UserProfile | undefined {
+    const cleanIdentifier = (identifier || '').trim().toLowerCase().replace(/^@/, '');
+    if (!cleanIdentifier) return undefined;
+    return this.users().find(
+      u =>
+        u.username.toLowerCase() === cleanIdentifier ||
+        u.email.toLowerCase() === cleanIdentifier
+    );
   }
 
   private initSession() {
     if (typeof window === 'undefined') return;
 
-    // Respect explicit sign-out across reloads
     const signedOutFlag = localStorage.getItem('checkmate_signed_out');
     if (signedOutFlag === 'true') {
       this.isAuthenticated.set(false);
@@ -190,11 +289,9 @@ export class AuthService {
         this.isAuthenticated.set(true);
         this.updateRemainingMinutes();
       } else {
-        // Expired
         this.logout(true);
       }
     } else {
-      // Create session for default user on first visit
       this.issueSession(this.currentUser());
     }
 
@@ -262,29 +359,44 @@ export class AuthService {
   }
 
   /**
-   * Manual Sign In with Email (or Username) + Password
+   * Manual Sign In with Username OR Email + Password.
+   * Checks first if the account exists in the database; if not, returns not_found error.
    */
-  signIn(emailOrUsername: string, pass: string): { success: boolean; message?: string } {
-    const cleanIdentifier = (emailOrUsername || '').trim().toLowerCase();
+  signIn(usernameOrEmail: string, pass: string): {
+    success: boolean;
+    reason?: 'not_found' | 'wrong_password';
+    message?: string;
+    matchedUser?: UserProfile;
+  } {
+    const cleanIdentifier = (usernameOrEmail || '').trim().toLowerCase().replace(/^@/, '');
     const cleanPass = (pass || '').trim();
 
     if (!cleanIdentifier || !cleanPass) {
-      return { success: false, message: 'invalidCredentials' };
+      return {
+        success: false,
+        reason: 'not_found',
+        message: 'Account not found in database. Please Sign Up first.',
+      };
     }
 
-    const user = this.users().find(u =>
-      u.email.toLowerCase() === cleanIdentifier ||
-      u.username.toLowerCase() === cleanIdentifier
-    );
+    const user = this.findAccountInDatabase(cleanIdentifier);
 
     if (!user) {
-      return { success: false, message: 'invalidCredentials' };
+      return {
+        success: false,
+        reason: 'not_found',
+        message: 'Account not found in database. Please Sign Up first.',
+      };
     }
 
     const expectedPass = user.password || 'password123';
-    // Allow login if password matches OR if account had default 'password123' from legacy creation
-    if (cleanPass !== expectedPass && expectedPass !== 'password123') {
-      return { success: false, message: 'invalidCredentials' };
+    if (cleanPass !== expectedPass) {
+      return {
+        success: false,
+        reason: 'wrong_password',
+        message: 'Incorrect password for this account.',
+        matchedUser: user,
+      };
     }
 
     if (cleanIdentifier.includes('@')) {
@@ -294,11 +406,48 @@ export class AuthService {
     this.currentUser.set(user);
     this.issueSession(user);
     this.showAuthModal.set(false);
-    return { success: true };
+    return { success: true, matchedUser: user };
   }
 
   /**
-   * Manual Sign Up a new user with Email & Password and isolated account data
+   * Async Manual Sign-In that explicitly syncs with Firestore database first before checking account existence.
+   */
+  async signInCheckingDatabase(usernameOrEmail: string, pass: string): Promise<{
+    success: boolean;
+    reason?: 'not_found' | 'wrong_password';
+    message?: string;
+    matchedUser?: UserProfile;
+  }> {
+    await this.syncUsersFromDatabase();
+    return this.signIn(usernameOrEmail, pass);
+  }
+
+  /**
+   * Reset password for an account and sign in immediately
+   */
+  resetPassword(userId: string, newPass: string): boolean {
+    const cleanPass = (newPass || '').trim();
+    if (cleanPass.length < 4) return false;
+
+    const user = this.users().find(u => u.id === userId);
+    if (!user) return false;
+
+    const updatedUser: UserProfile = {
+      ...user,
+      password: cleanPass,
+    };
+
+    this.updateUser(updatedUser);
+    this.currentUser.set(updatedUser);
+    this.issueSession(updatedUser);
+    this.showAuthModal.set(false);
+    return true;
+  }
+
+  /**
+   * Manual Sign Up with Username, Email & Password and clean empty account data:
+   * Items: [], Categories: [], Projects: [], Notifications: [], Map Locations: [], AI Chats: [],
+   * UI Options: Light Mode (darkMode: false), Arabic ('ar'), Active Project: ""
    */
   signUp(data: {
     name: string;
@@ -312,36 +461,43 @@ export class AuthService {
     provider?: AuthProviderType;
   }): { success: boolean; message?: string; user?: UserProfile } {
     const cleanEmail = data.email.trim().toLowerCase();
-    const derivedUsername = (data.username?.trim() || cleanEmail.split('@')[0] || 'user_' + Date.now())
+    const cleanUsername = (data.username?.trim() || cleanEmail.split('@')[0] || 'user_' + Date.now())
       .toLowerCase()
-      .replace(/[^a-z0-9_.-]/g, '');
+      .replace(/^@/, '')
+      .replace(/\s+/g, '_');
 
-    if (!cleanEmail || !data.password) {
+    if (!cleanEmail || !data.password || !cleanUsername) {
       return { success: false, message: 'invalidCredentials' };
     }
 
-    // Check if email already exists
-    const exists = this.users().some(u => u.email.toLowerCase() === cleanEmail);
+    // Check if username or email already exists in database
+    const exists = this.users().some(u =>
+      u.email.toLowerCase() === cleanEmail ||
+      u.username.toLowerCase() === cleanUsername
+    );
     if (exists) {
       return { success: false, message: 'userAlreadyExists' };
     }
+
+    const emptyWorkspace = createEmptyUserWorkspace();
 
     const newUser: UserProfile = {
       id: 'u_' + Date.now(),
       name: data.name.trim(),
       nameEn: (data.nameEn || data.name).trim(),
-      username: derivedUsername,
+      username: cleanUsername,
       email: cleanEmail,
       password: data.password.trim(),
       role: data.role || 'editor',
       department: data.department?.trim() || 'فريق العمل والمشاريع',
       avatar: data.avatar || '👤',
       provider: data.provider || 'email',
+      ...emptyWorkspace,
     };
 
     const updatedList = [...this.users(), newUser];
     this.persistUsers(updatedList);
-    this.firebase.saveUserToFirestore(newUser);
+    void this.firebase.saveUserToFirestore(newUser);
     void this.firebase.createWithEmail(cleanEmail, newUser.password || '');
 
     this.currentUser.set(newUser);
@@ -352,52 +508,74 @@ export class AuthService {
   }
 
   /**
-   * Social Sign-In / Sign-Up with Google, Facebook, or Apple
+   * Google Sign-In / Sign-Up via Firebase Google Popup.
+   * When mode === 'signin', checks first if the account exists in the database;
+   * if not found, signs out of Firebase Auth and returns an error to the client.
    */
-  async signInWithSocialProvider(provider: 'google' | 'facebook' | 'apple'): Promise<{
+  async signInWithGoogleProvider(mode: 'signin' | 'create' = 'signin'): Promise<{
     success: boolean;
-    requiresSocialForm?: boolean;
+    errorCode?: string;
     user?: UserProfile;
+    isNewUser?: boolean;
   }> {
     try {
-      if (provider === 'google') {
-        await this.firebase.signInWithGoogle();
-      } else if (provider === 'facebook') {
-        await this.firebase.signInWithFacebook();
-      } else if (provider === 'apple') {
-        await this.firebase.signInWithApple();
-      }
-
+      await this.firebase.signInWithGoogle();
       const fbUser = this.firebase.currentUser();
       if (fbUser && fbUser.email) {
+        await this.syncUsersFromDatabase();
+        const cleanEmail = fbUser.email.trim().toLowerCase();
+        const existing = this.findAccountInDatabase(cleanEmail);
+
+        if (mode === 'signin' && !existing) {
+          await this.firebase.signOut();
+          return {
+            success: false,
+            errorCode: 'account_not_found',
+          };
+        }
+
+        const isNewUser = !existing && mode === 'create';
         const displayName = fbUser.displayName || fbUser.email.split('@')[0];
-        const user = this.completeSocialSignIn(provider, fbUser.email, displayName);
-        return { success: true, user };
+        const user = this.completeGoogleSignIn(fbUser.email, displayName, 'admin', mode === 'create');
+        if (!user) {
+          return {
+            success: false,
+            errorCode: 'account_not_found',
+          };
+        }
+        return { success: true, user, isNewUser };
       }
-      return { success: false, requiresSocialForm: true };
-    } catch {
-      // Popup blocked in iframe or OAuth provider not yet configured in Firebase Console:
-      // smoothly open the in-modal Social Account Connect step so user can still sign in/up with Google/Facebook/Apple
-      return { success: false, requiresSocialForm: true };
+      return { success: false, errorCode: 'no_user' };
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code || 'popup_error';
+      return { success: false, errorCode: code };
     }
   }
 
   /**
-   * Finds or creates an isolated account for a Google, Facebook, or Apple user and signs them in
+   * Signs in an existing Google user from the database, or creates a new one when allowCreate is true.
+   * When creating a new Google user:
+   * - Sets a cryptographically strong random password instead of 'password123'
+   * - Resets all user workspace data to empty arrays [] and UI options to Light Mode, Arabic, and Active Project ""
    */
-  completeSocialSignIn(
-    provider: 'google' | 'facebook' | 'apple',
+  completeGoogleSignIn(
     email: string,
     displayName?: string,
-    role: UserRole = 'admin'
-  ): UserProfile {
+    role: UserRole = 'admin',
+    allowCreate = true
+  ): UserProfile | null {
     const cleanEmail = email.trim().toLowerCase();
-    const existing = this.users().find(u => u.email.toLowerCase() === cleanEmail);
+    const existing = this.findAccountInDatabase(cleanEmail);
 
     if (existing) {
+      const securePassword =
+        existing.password && existing.password !== 'password123'
+          ? existing.password
+          : generateSecureRandomPassword(24);
       const updatedUser: UserProfile = {
         ...existing,
-        provider,
+        password: securePassword,
+        provider: 'google',
       };
       this.updateUser(updatedUser);
       this.currentUser.set(updatedUser);
@@ -406,9 +584,14 @@ export class AuthService {
       return updatedUser;
     }
 
+    if (!allowCreate) {
+      return null;
+    }
+
     const fallbackName = (displayName || cleanEmail.split('@')[0] || 'User').trim();
-    const providerAvatar = provider === 'google' ? '🌐' : provider === 'facebook' ? '📘' : '🍎';
     const username = cleanEmail.split('@')[0].replace(/[^a-z0-9_.-]/g, '') || 'user_' + Date.now();
+    const emptyWorkspace = createEmptyUserWorkspace();
+    const randomPassword = generateSecureRandomPassword(24);
 
     const newUser: UserProfile = {
       id: 'u_' + Date.now(),
@@ -416,16 +599,17 @@ export class AuthService {
       nameEn: fallbackName,
       username,
       email: cleanEmail,
-      password: 'social_oauth_' + provider,
+      password: randomPassword,
       role,
-      department: `${provider.toUpperCase()} Account`,
-      avatar: providerAvatar,
-      provider,
+      department: 'Google Account',
+      avatar: '🌐',
+      provider: 'google',
+      ...emptyWorkspace,
     };
 
     const updatedList = [...this.users(), newUser];
     this.persistUsers(updatedList);
-    this.firebase.saveUserToFirestore(newUser);
+    void this.firebase.saveUserToFirestore(newUser);
 
     this.currentUser.set(newUser);
     this.issueSession(newUser);
@@ -445,28 +629,40 @@ export class AuthService {
   }): UserProfile {
     const cleanEmail = userData.email.trim().toLowerCase();
     const cleanUsername = (userData.username || cleanEmail.split('@')[0] || 'user_' + Date.now()).trim().toLowerCase();
+    const emptyWorkspace = createEmptyUserWorkspace();
     const newUser: UserProfile = {
       id: 'u_' + Date.now(),
       name: userData.name.trim(),
       nameEn: (userData.nameEn || userData.name).trim(),
       username: cleanUsername,
       email: cleanEmail,
-      password: (userData.password || 'password123').trim(),
+      password: (userData.password || generateSecureRandomPassword(24)).trim(),
       role: userData.role,
       department: userData.department?.trim() || 'فريق العمل والمشاريع',
       avatar: userData.avatar || '👤',
       provider: 'email',
+      ...emptyWorkspace,
     };
 
     const updatedList = [...this.users(), newUser];
     this.persistUsers(updatedList);
-    this.firebase.saveUserToFirestore(newUser);
+    void this.firebase.saveUserToFirestore(newUser);
     return newUser;
+  }
+
+  updateUserUiOptions(userId: string, uiOptions: UserUiOptions) {
+    if (!userId) return;
+    const updatedList = this.users().map(u => (u.id === userId ? { ...u, uiOptions } : u));
+    this.persistUsers(updatedList);
+    if (this.currentUser().id === userId) {
+      this.currentUser.update(curr => ({ ...curr, uiOptions }));
+    }
   }
 
   loginAs(user: UserProfile) {
     this.currentUser.set(user);
     this.issueSession(user);
+    this.showAuthModal.set(false);
   }
 
   switchUser(id: string) {
@@ -516,7 +712,7 @@ export class AuthService {
     const updatedList = this.users().map(u => {
       if (u.id === userId) {
         const updated = { ...u, role: newRole };
-        this.firebase.saveUserToFirestore(updated);
+        void this.firebase.saveUserToFirestore(updated);
         return updated;
       }
       return u;
@@ -531,7 +727,7 @@ export class AuthService {
   updateUser(updated: UserProfile) {
     const updatedList = this.users().map(u => (u.id === updated.id ? updated : u));
     this.persistUsers(updatedList);
-    this.firebase.saveUserToFirestore(updated);
+    void this.firebase.saveUserToFirestore(updated);
     if (this.currentUser().id === updated.id) {
       this.currentUser.set(updated);
     }
@@ -542,9 +738,10 @@ export class AuthService {
       return false;
     }
 
+    this.addDeletedUserId(userId);
     const updatedList = this.users().filter(u => u.id !== userId);
     this.persistUsers(updatedList);
-    this.firebase.deleteUserFromFirestore(userId);
+    void this.firebase.deleteUserFromFirestore(userId);
 
     if (this.currentUser().id === userId) {
       this.loginAs(updatedList[0]);

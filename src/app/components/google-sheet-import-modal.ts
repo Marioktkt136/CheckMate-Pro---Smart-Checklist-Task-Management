@@ -30,14 +30,14 @@ import { FirebaseService } from '../services/firebase.service';
             <div>
               <div class="flex items-center gap-2">
                 <h3 id="gsheet-import-title" class="font-bold text-base sm:text-lg text-slate-900 dark:text-slate-100">
-                  استيراد البيانات من Google Sheets
+                  {{ i18n.isRtl() ? 'استيراد البيانات من Google Sheets' : 'Import Data from Google Sheets' }}
                 </h3>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  مخطط الأعمدة والصفوف
+                  {{ i18n.isRtl() ? 'مخطط الأعمدة والصفوف' : 'Columns & Rows Schema' }}
                 </span>
               </div>
               <p class="text-xs text-slate-400">
-                شرح هيكل الجدول، النسخ المباشر من Google Sheets، والاستيراد اللحظي
+                {{ i18n.isRtl() ? 'شرح هيكل الجدول، النسخ المباشر من Google Sheets، والاستيراد اللحظي' : 'Spreadsheet schema guide, direct copy-paste, and instant import into your project' }}
               </p>
             </div>
           </div>
@@ -46,7 +46,7 @@ import { FirebaseService } from '../services/firebase.service';
             type="button"
             (click)="closeModal.emit()"
             class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-            aria-label="إغلاق"
+            [attr.aria-label]="i18n.isRtl() ? 'إغلاق' : 'Close'"
           >
             <mat-icon class="text-xl">close</mat-icon>
           </button>
@@ -66,7 +66,7 @@ import { FirebaseService } from '../services/firebase.service';
             [class.dark:text-slate-400]="activeTab() !== 'schema'"
           >
             <mat-icon class="text-base">view_column</mat-icon>
-            <span>1. مخطط وهيكل الجدول (Schema & Columns)</span>
+            <span>{{ i18n.isRtl() ? '1. مخطط وهيكل الجدول (Schema & Columns)' : '1. Spreadsheet Schema & Columns' }}</span>
           </button>
 
           <button
@@ -81,7 +81,7 @@ import { FirebaseService } from '../services/firebase.service';
             [class.dark:text-slate-400]="activeTab() !== 'import'"
           >
             <mat-icon class="text-base">cloud_download</mat-icon>
-            <span>2. استيراد البيانات (Import Data)</span>
+            <span>{{ i18n.isRtl() ? '2. استيراد البيانات (Import Data)' : '2. Import Spreadsheet Data' }}</span>
           </button>
         </div>
 
@@ -99,10 +99,10 @@ import { FirebaseService } from '../services/firebase.service';
                     <mat-icon class="text-emerald-600 dark:text-emerald-400">table_rows</mat-icon>
                     <div>
                       <span class="font-bold text-xs sm:text-sm text-emerald-950 dark:text-emerald-200">
-                        شكل جدول Google Sheets المطلوب (Columns & Rows Schema)
+                        {{ i18n.isRtl() ? 'شكل جدول Google Sheets المطلوب (Columns & Rows Schema)' : 'Required Google Sheets Structure (Columns & Rows Schema)' }}
                       </span>
                       <p class="text-[11px] text-emerald-800 dark:text-emerald-400">
-                        الصف رقم 1 يحتوي على أسماء الأعمدة، والصفوف التالية تحتوي على بيانات الأجهزة والمشتريات.
+                        {{ i18n.isRtl() ? 'الصف رقم 1 يحتوي على أسماء الأعمدة، والصفوف التالية تحتوي على بيانات الأصناف.' : 'Row 1 contains column headers, and subsequent rows contain your items.' }}
                       </p>
                     </div>
                   </div>
@@ -113,98 +113,26 @@ import { FirebaseService } from '../services/firebase.service';
                       type="button"
                       (click)="copyTemplateToClipboard()"
                       class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
-                      title="نسخ النموذج ولصقه مباشرة في صفحة Google Sheet جديدة"
                     >
                       <mat-icon class="!text-sm !w-4 !h-4">content_copy</mat-icon>
-                      <span>نسخ قالب الجدول</span>
+                      <span>{{ i18n.isRtl() ? 'نسخ قالب الجدول' : 'Copy Sheet Template' }}</span>
                     </button>
 
                     <button
                       type="button"
                       (click)="downloadSampleCsv()"
                       class="px-2.5 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                      title="تحميل ملف CSV جاهز"
                     >
                       <mat-icon class="!text-sm !w-4 !h-4">download</mat-icon>
-                      <span>تنزيل CSV</span>
+                      <span>{{ i18n.isRtl() ? 'تنزيل CSV' : 'Download CSV' }}</span>
                     </button>
                   </div>
-                </div>
-
-                <!-- Google Sheet Interactive Visual Table Grid -->
-                <div class="overflow-x-auto rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-white dark:bg-slate-900 shadow-xs">
-                  <table class="w-full text-xs text-right border-collapse">
-                    <thead>
-                      <!-- Excel Column Letters Row (A, B, C...) -->
-                      <tr class="bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono text-[11px] border-b border-slate-200 dark:border-slate-700 text-center">
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700 w-10">Row</th>
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700">A</th>
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700">B</th>
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700">C</th>
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700">D</th>
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700">E</th>
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700">F</th>
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700">G</th>
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700">H</th>
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700">I</th>
-                        <th class="p-1.5 border-r border-slate-200 dark:border-slate-700">J</th>
-                        <th class="p-1.5">K</th>
-                      </tr>
-                      <!-- Row 1: Column Header Names -->
-                      <tr class="bg-emerald-100/70 dark:bg-emerald-950/60 font-bold text-emerald-900 dark:text-emerald-200 border-b border-emerald-200 dark:border-emerald-800">
-                        <td class="p-2 text-center font-mono text-slate-400 border-r border-slate-200 dark:border-slate-700">1</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap"># (م)</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap text-blue-700 dark:text-blue-400">القسم *</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap text-emerald-700 dark:text-emerald-400">اسم الصنف *</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap">Item Name</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap">المواصفات</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap bg-amber-100/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">ملاحظاتي الخاصة</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap">الحالة</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap">الأولوية</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap">السعر التقديري</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap">السعر الفعلي</td>
-                        <td class="p-2 whitespace-nowrap">الموعد المستهدف</td>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                      <!-- Row 2 (Example 1) -->
-                      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td class="p-2 text-center font-mono text-slate-400 bg-slate-50 dark:bg-slate-800/30 border-r border-slate-200 dark:border-slate-700">2</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 font-mono">1</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 font-semibold text-blue-600 dark:text-blue-400">الأجهزة الأساسية</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 font-bold">الثلاجة</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 text-slate-400">Refrigerator</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700">نوفروست 16 قدم ديجيتال</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 bg-amber-50/40 dark:bg-amber-950/20 font-medium">شارب - بي تك</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700"><span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px]">لم يبدأ</span></td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700"><span class="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-700 text-[10px]">عاجلة</span></td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 font-mono">38000</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 font-mono">0</td>
-                        <td class="p-2 font-mono text-slate-500">2026-11-20</td>
-                      </tr>
-                      <!-- Row 3 (Example 2) -->
-                      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td class="p-2 text-center font-mono text-slate-400 bg-slate-50 dark:bg-slate-800/30 border-r border-slate-200 dark:border-slate-700">3</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 font-mono">2</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 font-semibold text-blue-600 dark:text-blue-400">الأجهزة الأساسية</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 font-bold">الغسالة</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 text-slate-400">Washing Machine</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700">أوتوماتيك 9 كيلو</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 bg-amber-50/40 dark:bg-amber-950/20 font-medium">إل جي انفرتر بالمجفف</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700"><span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 text-[10px]">قيد المقارنة</span></td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700"><span class="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-700 text-[10px]">عاجلة</span></td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 font-mono">26000</td>
-                        <td class="p-2 border-r border-slate-200 dark:border-slate-700 font-mono">0</td>
-                        <td class="p-2 font-mono text-slate-500">2026-11-25</td>
-                      </tr>
-                    </tbody>
-                  </table>
                 </div>
 
                 @if (copySuccess()) {
                   <div class="p-2 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-semibold flex items-center gap-1.5 animate-in fade-in">
                     <mat-icon class="!text-sm !w-4 !h-4">check</mat-icon>
-                    <span>تم نسخ القالب بنجاح! افتح Google Sheets واضغط Ctrl+V في الخلية A1.</span>
+                    <span>{{ i18n.isRtl() ? 'تم نسخ القالب بنجاح! افتح Google Sheets واضغط Ctrl+V في الخلية A1.' : 'Template copied! Open Google Sheets and press Ctrl+V in cell A1.' }}</span>
                   </div>
                 }
               </div>
@@ -212,7 +140,7 @@ import { FirebaseService } from '../services/firebase.service';
               <!-- Columns Detailed Dictionary Cards -->
               <div>
                 <h4 class="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 mb-2">
-                  تفاصيل الأعمدة المعتمدة والقيم المقبولة:
+                  {{ i18n.isRtl() ? 'تفاصيل الأعمدة المعتمدة والقيم المقبولة:' : 'Supported Columns & Example Values:' }}
                 </h4>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   @for (col of schemaColumns; track col.col) {
@@ -222,17 +150,17 @@ import { FirebaseService } from '../services/firebase.service';
                           <span class="w-5 h-5 rounded-md bg-emerald-600 text-white font-mono font-bold text-[11px] flex items-center justify-center">
                             {{ col.col }}
                           </span>
-                          <span class="font-bold text-slate-900 dark:text-slate-100">{{ col.nameAr }}</span>
+                          <span class="font-bold text-slate-900 dark:text-slate-100">{{ i18n.isRtl() ? col.nameAr : col.nameEn }}</span>
                         </div>
                         <span class="text-[10px] font-bold px-1.5 py-0.2 rounded"
                               [class.bg-rose-100]="col.required" [class.text-rose-700]="col.required"
                               [class.bg-slate-200]="!col.required" [class.text-slate-600]="!col.required">
-                          {{ col.required ? 'إلزامي *' : 'اختياري' }}
+                          {{ col.required ? (i18n.isRtl() ? 'إلزامي *' : 'Required *') : (i18n.isRtl() ? 'اختياري' : 'Optional') }}
                         </span>
                       </div>
                       <p class="text-[11px] text-slate-500 dark:text-slate-400">{{ col.descAr }}</p>
                       <div class="text-[10px] text-slate-400 font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800">
-                        مثال: {{ col.example }}
+                        {{ i18n.isRtl() ? 'مثال:' : 'Example:' }} {{ col.example }}
                       </div>
                     </div>
                   }
@@ -245,7 +173,7 @@ import { FirebaseService } from '../services/firebase.service';
                   (click)="activeTab.set('import')"
                   class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-500/20"
                 >
-                  <span>جاهز للاستيراد الآن</span>
+                  <span>{{ i18n.isRtl() ? 'جاهز للاستيراد الآن' : 'Proceed to Import' }}</span>
                   <mat-icon class="!text-sm !w-4 !h-4">arrow_forward</mat-icon>
                 </button>
               </div>
@@ -272,7 +200,7 @@ import { FirebaseService } from '../services/firebase.service';
                   [class.text-slate-600]="importMode() !== 'paste'"
                 >
                   <mat-icon class="text-base">content_paste</mat-icon>
-                  <span>لصق الخلايا مباشرة (Copy & Paste)</span>
+                  <span>{{ i18n.isRtl() ? 'لصق الخلايا مباشرة (Copy & Paste)' : 'Copy & Paste Cells Directly' }}</span>
                 </button>
 
                 <button
@@ -288,7 +216,7 @@ import { FirebaseService } from '../services/firebase.service';
                   [class.text-slate-600]="importMode() !== 'link'"
                 >
                   <mat-icon class="text-base">link</mat-icon>
-                  <span>رابط Google Sheet المباشر</span>
+                  <span>{{ i18n.isRtl() ? 'رابط Google Sheet المباشر' : 'Google Sheet Share Link' }}</span>
                 </button>
               </div>
 
@@ -297,16 +225,16 @@ import { FirebaseService } from '../services/firebase.service';
                 <div class="space-y-2">
                   <div class="flex items-center justify-between text-xs">
                     <label for="pasted-content" class="font-bold text-slate-800 dark:text-slate-200">
-                      الصق الخلايا المنسوخة من جدول Google Sheets هنا:
+                      {{ i18n.isRtl() ? 'الصق الخلايا المنسوخة من جدول Google Sheets هنا:' : 'Paste copied cells from Google Sheets here:' }}
                     </label>
-                    <span class="text-slate-400 text-[11px]">حدد الخلايا في Google Sheets، اضغط Ctrl+C ثم الصقها هنا</span>
+                    <span class="text-slate-400 text-[11px]">{{ i18n.isRtl() ? 'حدد الخلايا في Google Sheets، اضغط Ctrl+C ثم الصقها هنا' : 'Select cells in Google Sheets, press Ctrl+C, then paste below' }}</span>
                   </div>
                   <textarea
                     id="pasted-content"
                     [value]="pastedText()"
                     (input)="onTextInput($event)"
                     rows="6"
-                    placeholder="الصق هنا (مثال: # \t القسم \t اسم الصنف \t المواصفات \t ملاحظاتي \t الحالة \t الأولوية \t السعر ...)"
+                    [placeholder]="i18n.isRtl() ? 'الصق هنا (مثال: # \t القسم \t اسم الصنف \t المواصفات \t ملاحظاتي ...)' : 'Paste TSV/CSV rows here...'"
                     class="w-full text-xs font-mono p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed"
                   ></textarea>
                 </div>
@@ -316,7 +244,7 @@ import { FirebaseService } from '../services/firebase.service';
               @if (importMode() === 'link') {
                 <div class="space-y-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
                   <label for="sheet-url-input" class="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                    رابط جدول Google Sheet (URL) أو المعرف (ID):
+                    {{ i18n.isRtl() ? 'رابط جدول Google Sheet (URL) أو المعرف (ID):' : 'Google Sheet URL or Spreadsheet ID:' }}
                   </label>
                   <div class="flex gap-2">
                     <input
@@ -335,54 +263,32 @@ import { FirebaseService } from '../services/firebase.service';
                     >
                       @if (isFetching()) {
                         <mat-icon class="!text-sm !w-4 !h-4 animate-spin">sync</mat-icon>
-                        <span>جاري القراءة...</span>
+                        <span>{{ i18n.isRtl() ? 'جاري القراءة...' : 'Fetching...' }}</span>
                       } @else {
                         <mat-icon class="!text-sm !w-4 !h-4">cloud_sync</mat-icon>
-                        <span>قراءة الجدول</span>
+                        <span>{{ i18n.isRtl() ? 'قراءة الجدول' : 'Fetch Sheet' }}</span>
                       }
                     </button>
                   </div>
-                  <p class="text-[11px] text-slate-400">
-                    💡 تأكد من مشاركة الجدول برابط عام أو تسجيل الدخول بحساب Google Workspace من التطبيق.
-                  </p>
                 </div>
               }
 
-              <!-- Target Project & Account Options -->
-              <div class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-3">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <label for="target-project-select" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      إضافة الأصناف إلى مشروع:
-                    </label>
-                    <select
-                      id="target-project-select"
-                      [value]="selectedProjectId()"
-                      (change)="onProjectChange($event)"
-                      class="w-full text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 cursor-pointer focus:outline-none"
-                    >
-                      @for (p of storage.projects(); track p.id) {
-                        <option [value]="p.id">{{ p.nameAr }}</option>
-                      }
-                    </select>
-                  </div>
-
-                  <div>
-                    <span class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      حساب المالك وحالة النشر:
-                    </span>
-                    <label class="flex items-center gap-2 mt-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        [checked]="publishToShared()"
-                        (change)="onPublishToggle($event)"
-                        class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                      />
-                      <span class="text-xs font-medium text-slate-800 dark:text-slate-200">
-                        نشر الأصناف في مساحة العمل المشتركة للجميع (Published)
-                      </span>
-                    </label>
-                  </div>
+              <!-- Target Project Selection -->
+              <div class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+                <div class="text-xs">
+                  <label for="target-project-select" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {{ i18n.isRtl() ? 'إضافة الأصناف إلى مجلد / مشروع:' : 'Import Items into Project / Folder:' }}
+                  </label>
+                  <select
+                    id="target-project-select"
+                    [value]="selectedProjectId()"
+                    (change)="onProjectChange($event)"
+                    class="w-full text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 cursor-pointer focus:outline-none"
+                  >
+                    @for (p of storage.projects(); track p.id) {
+                      <option [value]="p.id">{{ i18n.isRtl() ? p.nameAr : (p.nameEn || p.nameAr) }}</option>
+                    }
+                  </select>
                 </div>
               </div>
 
@@ -392,58 +298,17 @@ import { FirebaseService } from '../services/firebase.service';
                   <div class="flex items-center justify-between text-xs">
                     <div class="flex items-center gap-2">
                       <span class="font-bold text-slate-900 dark:text-slate-100">
-                        معاينة الأصناف المستخرجة جاهزة للحفظ ({{ res.items.length }} صنف)
+                        {{ i18n.isRtl() ? 'معاينة الأصناف المستخرجة (' + res.items.length + ' صنف)' : 'Parsed Items Preview (' + res.items.length + ' items)' }}
                       </span>
                       <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                        {{ res.categoriesFound.length }} تصنيف
+                        {{ res.categoriesFound.length }} {{ i18n.isRtl() ? 'تصنيف' : 'categories' }}
                       </span>
                     </div>
                   </div>
 
-                  @if (res.warnings.length > 0) {
-                    <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300">
-                      {{ res.warnings[0] }}
-                    </div>
-                  }
-
-                  <div class="max-h-56 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                    <table class="w-full text-xs text-right border-collapse">
-                      <thead class="bg-slate-100 dark:bg-slate-800 sticky top-0 text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                        <tr>
-                          <th class="p-2 border-b">#</th>
-                          <th class="p-2 border-b">القسم</th>
-                          <th class="p-2 border-b">اسم الجهاز</th>
-                          <th class="p-2 border-b">المواصفات وملاحظاتي</th>
-                          <th class="p-2 border-b">الحالة</th>
-                          <th class="p-2 border-b">السعر</th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        @for (it of res.items; track $index) {
-                          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                            <td class="p-2 font-mono text-slate-400">{{ it.itemNumber }}</td>
-                            <td class="p-2 font-semibold text-blue-600 dark:text-blue-400">{{ it.category }}</td>
-                            <td class="p-2 font-bold text-slate-900 dark:text-slate-100">{{ it.titleAr }}</td>
-                            <td class="p-2 text-slate-500 truncate max-w-[200px]">{{ it.myNotes || it.notes || '-' }}</td>
-                            <td class="p-2">
-                              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
-                                    [class.bg-emerald-100]="it.status === 'purchased'" [class.text-emerald-800]="it.status === 'purchased'"
-                                    [class.bg-amber-100]="it.status === 'comparing'" [class.text-amber-800]="it.status === 'comparing'"
-                                    [class.bg-slate-100]="it.status === 'pending'" [class.text-slate-700]="it.status === 'pending'">
-                                {{ it.status === 'purchased' ? 'تم الشراء' : it.status === 'comparing' ? 'قيد المقارنة' : 'لم يبدأ' }}
-                              </span>
-                            </td>
-                            <td class="p-2 font-mono font-bold">{{ (it.actualCost || it.estimatedCost || 0).toLocaleString() }} ج.م</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <!-- Save Button -->
                   <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2">
                     <span class="text-xs text-slate-500 dark:text-slate-400">
-                      سيتم ربط الأصناف بحسابك الحالي: <strong>{{ auth.currentUser().name }}</strong>
+                      {{ i18n.isRtl() ? 'سيتم حفظ الأصناف في حسابك:' : 'Items will be saved to your account:' }} <strong>{{ auth.currentUser().name }}</strong>
                     </span>
 
                     <button
@@ -453,7 +318,7 @@ import { FirebaseService } from '../services/firebase.service';
                       class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <mat-icon class="!text-sm !w-4 !h-4">download_done</mat-icon>
-                      <span>استيراد {{ res.items.length }} صنف إلى القائمة فوراً</span>
+                      <span>{{ i18n.isRtl() ? 'استيراد ' + res.items.length + ' صنف إلى القائمة فوراً' : 'Import ' + res.items.length + ' Items Now' }}</span>
                     </button>
                   </div>
                 </div>
@@ -496,7 +361,6 @@ export class GoogleSheetImportModalComponent {
   importSuccessMessage = signal<string>('');
 
   selectedProjectId = signal<string>('home_appliances');
-  publishToShared = signal<boolean>(true);
 
   parsedResult = signal<ParsedSheetResult | null>(null);
 
@@ -550,11 +414,6 @@ export class GoogleSheetImportModalComponent {
     }
   }
 
-  onPublishToggle(event: Event) {
-    const val = (event.target as HTMLInputElement).checked;
-    this.publishToShared.set(val);
-  }
-
   async fetchFromUrl() {
     const url = this.sheetUrl().trim();
     if (!url) return;
@@ -578,11 +437,14 @@ export class GoogleSheetImportModalComponent {
 
     const count = this.storage.importBatchItems(
       res.items,
-      this.selectedProjectId(),
-      this.publishToShared()
+      this.selectedProjectId()
     );
 
-    this.importSuccessMessage.set(`تم استيراد ${count} صنف بنجاح ومزامنتها مع مساحة عملك!`);
+    this.importSuccessMessage.set(
+      this.i18n.isRtl()
+        ? `تم استيراد ${count} صنف بنجاح ومزامنتها مع حسابك!`
+        : `Successfully imported ${count} items to your account!`
+    );
     this.parsedResult.set(null);
     this.pastedText.set('');
     this.sheetUrl.set('');

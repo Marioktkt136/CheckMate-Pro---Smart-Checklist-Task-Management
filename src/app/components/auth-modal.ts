@@ -31,12 +31,12 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
             </div>
             <div>
               <h3 id="user-mgmt-title" class="font-bold text-base sm:text-lg text-slate-900 dark:text-slate-100">
-                {{ i18n.isRtl() ? 'تسجيل الدخول وإنشاء الحسابات' : 'Sign In & Account Registration' }}
+                {{ i18n.isRtl() ? 'تسجيل الدخول وإدارة الحسابات' : 'Sign In & Account Management' }}
               </h3>
               <p class="text-xs text-slate-400">
                 {{ i18n.isRtl()
-                  ? 'الدخول عبر Google أو Facebook أو Apple أو البريد الإلكتروني وكلمة المرور'
-                  : 'Sign in or sign up with Google, Facebook, Apple, or Email & Password' }}
+                  ? 'الدخول عبر حساب Google أو يدويًا باسم المستخدم / البريد الإلكتروني وكلمة المرور'
+                  : 'Sign in with Google or manually using Username / Email & Password' }}
               </p>
             </div>
           </div>
@@ -58,10 +58,10 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
             <div class="flex items-center gap-2">
               <span class="text-lg">{{ auth.currentUser().avatar }}</span>
               <div>
-                <div class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                <div class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 flex-wrap">
                   <span>{{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}</span>
                   <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-200/70 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-mono">
-                    {{ auth.currentUser().email }}
+                    @{{ auth.currentUser().username }}
                   </span>
                 </div>
                 <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
@@ -163,146 +163,87 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
           </div>
         }
         @if (errorMessage()) {
-          <div class="mt-3 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-300 font-semibold flex items-center gap-1.5">
-            <mat-icon class="!text-sm !w-4 !h-4">error_outline</mat-icon>
-            <span>{{ errorMessage() }}</span>
+          <div class="mt-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-300 space-y-2">
+            <div class="font-semibold flex items-center gap-1.5">
+              <mat-icon class="!text-sm !w-4 !h-4">error_outline</mat-icon>
+              <span>{{ errorMessage() }}</span>
+            </div>
+
+            <!-- Helpful recovery actions when password is wrong or account not found -->
+            @if (matchedWrongPassUser()) {
+              <div class="flex items-center justify-between gap-2 pt-1 border-t border-rose-200/60 dark:border-rose-800/60">
+                <span class="text-[11px] text-rose-700 dark:text-rose-300">
+                  {{ i18n.isRtl()
+                    ? 'هل نسيت كلمة المرور لحساب (' + matchedWrongPassUser()!.username + ')؟'
+                    : 'Forgot password for (@' + matchedWrongPassUser()!.username + ')?' }}
+                </span>
+                <button
+                  type="button"
+                  (click)="onResetPasswordAndSignIn()"
+                  class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] cursor-pointer transition shrink-0"
+                >
+                  {{ i18n.isRtl() ? 'اعتماد كلمة المرور هذه والدخول' : 'Set This Password & Sign In' }}
+                </button>
+              </div>
+            }
+
+            @if (showNotFoundSignUpHint()) {
+              <div class="flex items-center justify-between gap-2 pt-1 border-t border-rose-200/60 dark:border-rose-800/60">
+                <span class="text-[11px] text-rose-700 dark:text-rose-300">
+                  {{ i18n.isRtl() ? 'هذا الحساب غير مسجل بعد.' : 'This account is not registered yet.' }}
+                </span>
+                <button
+                  type="button"
+                  (click)="prefillSignUpFromSignIn()"
+                  class="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] cursor-pointer transition shrink-0"
+                >
+                  {{ i18n.isRtl() ? 'إنشاء حساب جديد الآن' : 'Create Account Now' }}
+                </button>
+              </div>
+            }
           </div>
         }
 
-        <!-- Social Authentication Buttons (Shown on both Sign In & Sign Up tabs) -->
+        <!-- Google Authentication Button (Shown on both Sign In & Sign Up tabs) -->
         @if (currentTab() === 'signin' || currentTab() === 'create') {
           <div class="mt-4 space-y-2.5">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <!-- Google -->
-              <button
-                type="button"
-                (click)="onSocialAuth('google')"
-                class="w-full py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-100 font-semibold text-xs transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs"
-              >
-                <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 6.8 2.5 2.5 6.8 2.5 12s4.3 9.5 9.5 9.5c5.5 0 9.1-3.9 9.1-9.3 0-.6-.1-1.1-.2-1.6H12z"/>
-                  <path fill="#34A853" d="M3.6 7.4l3.2 2.4C7.7 7.6 9.7 6 12 6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 8.3 2.5 5.1 4.6 3.6 7.4z"/>
-                  <path fill="#FBBC05" d="M12 21.5c2.5 0 4.7-.8 6.3-2.3l-2.9-2.4c-.8.6-1.9 1-3.4 1-2.6 0-4.9-1.8-5.7-4.2l-3.2 2.5c1.5 3.1 4.9 5.4 8.9 5.4z"/>
-                  <path fill="#4285F4" d="M21.1 12.2c0-.6-.1-1.1-.2-1.6H12v3.9h5.5c-.3 1.4-1.1 2.5-2.1 3.2l2.9 2.4c1.7-1.6 2.8-4 2.8-7.9z"/>
-                </svg>
-                <span class="truncate">{{ i18n.isRtl() ? 'حساب Google' : 'Google' }}</span>
-              </button>
-
-              <!-- Facebook -->
-              <button
-                type="button"
-                (click)="onSocialAuth('facebook')"
-                class="w-full py-2.5 px-3 rounded-xl border border-[#1877F2]/30 bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] dark:text-[#589bff] font-semibold text-xs transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs"
-              >
-                <svg class="w-4 h-4 shrink-0 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/>
-                </svg>
-                <span class="truncate">{{ i18n.isRtl() ? 'حساب Facebook' : 'Facebook' }}</span>
-              </button>
-
-              <!-- Apple -->
-              <button
-                type="button"
-                (click)="onSocialAuth('apple')"
-                class="w-full py-2.5 px-3 rounded-xl border border-slate-900 dark:border-slate-700 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold text-xs transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs"
-              >
-                <svg class="w-4 h-4 shrink-0 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-                </svg>
-                <span class="truncate">{{ i18n.isRtl() ? 'حساب Apple' : 'Apple' }}</span>
-              </button>
-            </div>
-
-            <!-- Inline Social Account Connect Step (when popup is blocked in iframe or provider needs email confirmation) -->
-            @if (activeSocialProvider()) {
-              <form
-                [formGroup]="socialConnectForm"
-                (ngSubmit)="onCompleteSocialConnect()"
-                class="p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/30 space-y-2.5 animate-in fade-in duration-150"
-              >
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-blue-800 dark:text-blue-200 flex items-center gap-1.5">
-                    <mat-icon class="!text-sm !w-4 !h-4">verified</mat-icon>
-                    <span>
-                      {{ i18n.isRtl()
-                        ? 'المتابعة باستخدام حساب ' + activeSocialProviderLabel()
-                        : 'Continue with ' + activeSocialProviderLabel() + ' Account' }}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    (click)="activeSocialProvider.set(null)"
-                    class="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    {{ i18n.t().cancel }}
-                  </button>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <label for="social-email" class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {{ activeSocialProviderLabel() }} {{ i18n.t().email }} *
-                    </label>
-                    <input
-                      id="social-email"
-                      type="email"
-                      formControlName="email"
-                      [placeholder]="'user@' + activeSocialProvider() + '.com'"
-                      class="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label for="social-name" class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {{ i18n.t().fullName }} *
-                    </label>
-                    <input
-                      id="social-name"
-                      type="text"
-                      formControlName="name"
-                      [placeholder]="i18n.isRtl() ? 'الاسم الكامل' : 'Full Name'"
-                      class="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  [disabled]="socialConnectForm.invalid"
-                  class="w-full py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs disabled:opacity-40 transition cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <mat-icon class="!text-sm !w-4 !h-4">login</mat-icon>
-                  <span>
-                    {{ i18n.isRtl()
-                      ? 'تأكيد الدخول بحساب ' + activeSocialProviderLabel()
-                      : 'Continue with ' + activeSocialProviderLabel() }}
-                  </span>
-                </button>
-              </form>
-            }
+            <button
+              type="button"
+              (click)="onGoogleAuth()"
+              class="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-100 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-2.5 shadow-2xs"
+            >
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 6.8 2.5 2.5 6.8 2.5 12s4.3 9.5 9.5 9.5c5.5 0 9.1-3.9 9.1-9.3 0-.6-.1-1.1-.2-1.6H12z"/>
+                <path fill="#34A853" d="M3.6 7.4l3.2 2.4C7.7 7.6 9.7 6 12 6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 8.3 2.5 5.1 4.6 3.6 7.4z"/>
+                <path fill="#FBBC05" d="M12 21.5c2.5 0 4.7-.8 6.3-2.3l-2.9-2.4c-.8.6-1.9 1-3.4 1-2.6 0-4.9-1.8-5.7-4.2l-3.2 2.5c1.5 3.1 4.9 5.4 8.9 5.4z"/>
+                <path fill="#4285F4" d="M21.1 12.2c0-.6-.1-1.1-.2-1.6H12v3.9h5.5c-.3 1.4-1.1 2.5-2.1 3.2l2.9 2.4c1.7-1.6 2.8-4 2.8-7.9z"/>
+              </svg>
+              <span>{{ i18n.t().continueWithGoogle }}</span>
+            </button>
 
             <!-- Divider -->
             <div class="relative flex items-center py-1">
               <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
               <span class="shrink-0 mx-3 text-[11px] font-semibold text-slate-400">
-                {{ i18n.t().orWithEmailPassword }}
+                {{ i18n.isRtl() ? 'أو يدويًا باسم المستخدم / البريد وكلمة المرور' : 'Or manually with Username / Email & Password' }}
               </span>
               <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
             </div>
           </div>
         }
 
-        <!-- TAB 1: Manual Sign In (Email & Password) -->
+        <!-- TAB 1: Manual Sign In (Username/Email & Password) -->
         @if (currentTab() === 'signin') {
           <form [formGroup]="signInForm" (ngSubmit)="onSignInSubmit()" class="mt-2 space-y-3.5">
             <div>
-              <label for="signin-email" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                {{ i18n.t().email }} *
+              <label for="signin-identifier" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {{ i18n.t().username }} / {{ i18n.t().email }} *
               </label>
               <input
-                id="signin-email"
+                id="signin-identifier"
                 type="text"
-                formControlName="email"
-                [placeholder]="i18n.isRtl() ? 'example@domain.com' : 'example@domain.com'"
+                formControlName="identifier"
+                [placeholder]="i18n.isRtl() ? 'اسم المستخدم أو البريد الإلكتروني' : 'Enter username or email address'"
                 class="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -351,7 +292,7 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
           </form>
         }
 
-        <!-- TAB 2: Manual Sign Up (Full Name, Email & Password) -->
+        <!-- TAB 2: Manual Sign Up (Full Name, Username, Email & Password) -->
         @if (currentTab() === 'create') {
           <form [formGroup]="createUserForm" (ngSubmit)="onCreateUser()" class="mt-2 space-y-3">
             
@@ -364,11 +305,26 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
                   id="create-user-name"
                   type="text"
                   formControlName="name"
-                  [placeholder]="i18n.isRtl() ? 'مثال: مريم خالد' : 'e.g. Mariam Khaled'"
+                  [placeholder]="i18n.isRtl() ? 'مثال: ماريو نعيم' : 'e.g. Mario Naiem'"
                   class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
+              <div>
+                <label for="create-user-username" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {{ i18n.t().username }} *
+                </label>
+                <input
+                  id="create-user-username"
+                  type="text"
+                  formControlName="username"
+                  placeholder="marioktkt136"
+                  class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label for="create-user-email" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {{ i18n.t().email }} *
@@ -377,13 +333,12 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
                   id="create-user-email"
                   type="email"
                   formControlName="email"
+                  (input)="onSignUpEmailInput($event)"
                   placeholder="name@example.com"
                   class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-            </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label for="create-user-password" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {{ i18n.t().password }} *
@@ -406,7 +361,9 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
                   </button>
                 </div>
               </div>
+            </div>
 
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
               <div>
                 <label for="create-user-role" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {{ i18n.t().selectRole }} *
@@ -421,29 +378,29 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
                   <option value="viewer">👀 {{ i18n.t().roleViewer }}</option>
                 </select>
               </div>
-            </div>
 
-            <!-- Avatar Picker -->
-            <div>
-              <span class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                {{ i18n.t().chooseAvatar }}:
-              </span>
-              <div class="flex flex-wrap gap-2">
-                @for (av of avatarOptions; track av) {
-                  <button
-                    type="button"
-                    (click)="selectedAvatar.set(av)"
-                    class="w-9 h-9 rounded-xl border text-xl flex items-center justify-center transition cursor-pointer"
-                    [class.border-blue-600]="selectedAvatar() === av"
-                    [class.bg-blue-50]="selectedAvatar() === av"
-                    [class.dark:bg-blue-950]="selectedAvatar() === av"
-                    [class.scale-110]="selectedAvatar() === av"
-                    [class.border-slate-200]="selectedAvatar() !== av"
-                    [class.dark:border-slate-700]="selectedAvatar() !== av"
-                  >
-                    {{ av }}
-                  </button>
-                }
+              <!-- Avatar Picker -->
+              <div>
+                <span class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {{ i18n.t().chooseAvatar }}:
+                </span>
+                <div class="flex flex-wrap gap-1.5">
+                  @for (av of avatarOptions; track av) {
+                    <button
+                      type="button"
+                      (click)="selectedAvatar.set(av)"
+                      class="w-8 h-8 rounded-lg border text-base flex items-center justify-center transition cursor-pointer"
+                      [class.border-blue-600]="selectedAvatar() === av"
+                      [class.bg-blue-50]="selectedAvatar() === av"
+                      [class.dark:bg-blue-950]="selectedAvatar() === av"
+                      [class.scale-110]="selectedAvatar() === av"
+                      [class.border-slate-200]="selectedAvatar() !== av"
+                      [class.dark:border-slate-700]="selectedAvatar() !== av"
+                    >
+                      {{ av }}
+                    </button>
+                  }
+                </div>
               </div>
             </div>
 
@@ -488,7 +445,7 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
                           {{ i18n.isRtl() ? user.name : user.nameEn }}
                         </span>
                         <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                          {{ user.provider ? user.provider.toUpperCase() : 'EMAIL' }}
+                          @{{ user.username }}
                         </span>
                         @if (auth.currentUser().id === user.id) {
                           <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
@@ -590,100 +547,159 @@ export class AuthModalComponent {
   showSignInPassword = signal<boolean>(false);
   showSignUpPassword = signal<boolean>(false);
 
-  activeSocialProvider = signal<'google' | 'facebook' | 'apple' | null>(null);
+  matchedWrongPassUser = signal<UserProfile | null>(null);
+  showNotFoundSignUpHint = signal<boolean>(false);
 
   signInForm = new FormGroup({
-    email: new FormControl('', [Validators.required]),
+    identifier: new FormControl('', [Validators.required]),
     password: new FormControl('', [Validators.required]),
   });
 
   createUserForm = new FormGroup({
     name: new FormControl('', [Validators.required, Validators.minLength(2)]),
-    email: new FormControl('', [Validators.required, Validators.email]),
+    username: new FormControl('', [Validators.required, Validators.minLength(2)]),
+    email: new FormControl('', [Validators.required]),
     password: new FormControl('', [Validators.required, Validators.minLength(4)]),
     role: new FormControl<UserRole>('editor', [Validators.required]),
   });
-
-  socialConnectForm = new FormGroup({
-    email: new FormControl('', [Validators.required, Validators.email]),
-    name: new FormControl('', [Validators.required, Validators.minLength(2)]),
-  });
-
-  activeSocialProviderLabel(): string {
-    const p = this.activeSocialProvider();
-    if (p === 'google') return 'Google';
-    if (p === 'facebook') return 'Facebook';
-    if (p === 'apple') return 'Apple';
-    return '';
-  }
 
   switchTab(tab: 'signin' | 'create' | 'list') {
     this.currentTab.set(tab);
     this.feedbackMessage.set('');
     this.errorMessage.set('');
-    this.activeSocialProvider.set(null);
+    this.matchedWrongPassUser.set(null);
+    this.showNotFoundSignUpHint.set(false);
   }
 
-  async onSocialAuth(provider: 'google' | 'facebook' | 'apple') {
+  onSignUpEmailInput(event: Event) {
+    const val = (event.target as HTMLInputElement).value || '';
+    const currentUsername = this.createUserForm.controls.username.value || '';
+    if (val.includes('@') && !currentUsername.trim()) {
+      const prefix = val.split('@')[0].replace(/[^a-zA-Z0-9_.-]/g, '').toLowerCase();
+      if (prefix) {
+        this.createUserForm.controls.username.setValue(prefix);
+      }
+    }
+  }
+
+  async onGoogleAuth() {
     this.errorMessage.set('');
     this.feedbackMessage.set('');
+    this.matchedWrongPassUser.set(null);
+    this.showNotFoundSignUpHint.set(false);
 
-    const result = await this.auth.signInWithSocialProvider(provider);
+    if (this.auth.isAuthenticated()) {
+      this.storage.flushPendingSync();
+    }
+
+    const mode = this.currentTab() === 'create' ? 'create' : 'signin';
+    const result = await this.auth.signInWithGoogleProvider(mode);
     if (result.success && result.user) {
-      this.storage.dataScope.set('mine');
-      this.feedbackMessage.set(
-        this.i18n.isRtl()
-          ? `تم تسجيل الدخول بنجاح عبر ${provider.toUpperCase()} كـ ${result.user.name}`
-          : `Signed in with ${provider.toUpperCase()} as ${result.user.nameEn}`
-      );
-      setTimeout(() => this.closeModal.emit(), 700);
+      if (result.isNewUser) {
+        this.storage.resetWorkspaceForNewUser(result.user.id);
+      } else {
+        await this.storage.loadUserWorkspace(result.user.id);
+      }
+      this.closeModal.emit();
       return;
     }
 
-    // Open in-modal social account confirmation when popup is blocked in iframe or provider needs email
-    this.activeSocialProvider.set(provider);
-    const defaultDomain = provider === 'google' ? 'gmail.com' : provider === 'apple' ? 'icloud.com' : 'facebook.com';
-    this.socialConnectForm.reset({
-      email: provider === 'google' ? 'marionbedrous@gmail.com' : `user@${defaultDomain}`,
-      name: provider === 'google' ? 'Marion Bedrous' : `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
-    });
-  }
+    if (result.errorCode === 'account_not_found') {
+      this.showNotFoundSignUpHint.set(true);
+      this.errorMessage.set(this.i18n.t().googleAccountNotFoundError);
+      return;
+    }
 
-  onCompleteSocialConnect() {
-    const provider = this.activeSocialProvider();
-    if (!provider || this.socialConnectForm.invalid) return;
-
-    const { email, name } = this.socialConnectForm.value;
-    const user = this.auth.completeSocialSignIn(provider, email || '', name || '');
-    this.activeSocialProvider.set(null);
-    this.storage.dataScope.set('mine');
-    this.feedbackMessage.set(
+    this.errorMessage.set(
       this.i18n.isRtl()
-        ? `تم تسجيل الدخول بنجاح عبر ${provider.toUpperCase()} (${user.email})`
-        : `Signed in with ${provider.toUpperCase()} (${user.email})`
+        ? 'تعذر إكمال تسجيل الدخول بنافذة Google المنبثقة. يمكنك تسجيل الدخول أو إنشاء حساب مباشرة باسم المستخدم / البريد وكلمة المرور أدناه.'
+        : 'Google popup sign-in was cancelled or blocked. You can sign in or sign up directly with Username / Email & Password below.'
     );
-    setTimeout(() => this.closeModal.emit(), 700);
   }
 
-  onSignInSubmit() {
+  async onSignInSubmit() {
     if (this.signInForm.invalid) return;
     this.errorMessage.set('');
     this.feedbackMessage.set('');
+    this.matchedWrongPassUser.set(null);
+    this.showNotFoundSignUpHint.set(false);
 
-    const { email, password } = this.signInForm.value;
-    const res = this.auth.signIn(email || '', password || '');
+    if (this.auth.isAuthenticated()) {
+      this.storage.flushPendingSync();
+    }
+
+    const { identifier, password } = this.signInForm.value;
+    const res = await this.auth.signInCheckingDatabase(identifier || '', password || '');
     if (!res.success) {
-      this.errorMessage.set(this.i18n.t().invalidCredentials);
+      if (res.reason === 'wrong_password' && res.matchedUser) {
+        this.matchedWrongPassUser.set(res.matchedUser);
+        this.errorMessage.set(
+          this.i18n.isRtl()
+            ? 'كلمة المرور غير صحيحة لهذا الحساب المسجل في قاعدة البيانات.'
+            : 'Incorrect password for this account in the database.'
+        );
+      } else {
+        this.showNotFoundSignUpHint.set(true);
+        this.errorMessage.set(this.i18n.t().accountNotFoundError);
+      }
       return;
     }
 
-    this.storage.dataScope.set('mine');
-    this.feedbackMessage.set(
-      this.i18n.isRtl()
-        ? `تم تسجيل الدخول بنجاح كـ ${this.auth.currentUser().name}`
-        : `Signed in successfully as ${this.auth.currentUser().nameEn}`
-    );
-    setTimeout(() => this.closeModal.emit(), 700);
+    if (res.matchedUser) {
+      await this.storage.loadUserWorkspace(res.matchedUser.id);
+    }
+    this.closeModal.emit();
+  }
+
+  onResetPasswordAndSignIn() {
+    const user = this.matchedWrongPassUser();
+    const newPass = (this.signInForm.value.password || '').trim();
+    if (!user || !newPass) return;
+
+    if (newPass.length < 4) {
+      this.errorMessage.set(
+        this.i18n.isRtl()
+          ? 'يرجى إدخال كلمة مرور لا تقل عن 4 أحرف.'
+          : 'Please enter a password of at least 4 characters.'
+      );
+      return;
+    }
+
+    if (this.auth.isAuthenticated()) {
+      this.storage.flushPendingSync();
+    }
+
+    const ok = this.auth.resetPassword(user.id, newPass);
+    if (ok) {
+      this.matchedWrongPassUser.set(null);
+      this.errorMessage.set('');
+      this.storage.dataScope.set('mine');
+      void this.storage.loadUserWorkspace(user.id);
+      this.closeModal.emit();
+    }
+  }
+
+  prefillSignUpFromSignIn() {
+    const idVal = (this.signInForm.value.identifier || '').trim();
+    const passVal = (this.signInForm.value.password || '').trim();
+    this.switchTab('create');
+
+    if (idVal.includes('@')) {
+      const prefix = idVal.split('@')[0];
+      this.createUserForm.patchValue({
+        email: idVal,
+        username: prefix,
+        name: prefix,
+        password: passVal,
+      });
+    } else if (idVal) {
+      this.createUserForm.patchValue({
+        username: idVal,
+        name: idVal,
+        email: `${idVal}@checkmate.local`,
+        password: passVal,
+      });
+    }
   }
 
   onRefreshSession() {
@@ -697,10 +713,12 @@ export class AuthModalComponent {
   }
 
   onSignOut() {
+    this.storage.flushPendingSync();
     this.auth.logout(false);
     this.currentTab.set('signin');
-    this.activeSocialProvider.set(null);
-    this.signInForm.reset({ email: '', password: '' });
+    this.matchedWrongPassUser.set(null);
+    this.showNotFoundSignUpHint.set(false);
+    this.signInForm.reset({ identifier: '', password: '' });
     this.errorMessage.set('');
     this.feedbackMessage.set(
       this.i18n.isRtl() ? 'تم تسجيل الخروج بنجاح.' : 'Signed out successfully.'
@@ -743,10 +761,15 @@ export class AuthModalComponent {
     this.errorMessage.set('');
     this.feedbackMessage.set('');
 
+    if (this.auth.isAuthenticated()) {
+      this.storage.flushPendingSync();
+    }
+
     const v = this.createUserForm.value;
     const res = this.auth.signUp({
       name: v.name || '',
       nameEn: v.name || '',
+      username: v.username || '',
       email: v.email || '',
       password: v.password || '',
       role: (v.role as UserRole) || 'editor',
@@ -759,11 +782,10 @@ export class AuthModalComponent {
       return;
     }
 
+    // Explicitly reset new user data to empty arrays [] and UI Options (Light Mode, Arabic, Active Project "")
+    this.storage.resetWorkspaceForNewUser(res.user.id);
     this.storage.dataScope.set('mine');
-    this.feedbackMessage.set(this.i18n.t().registrationSuccess);
     this.createUserForm.reset({ role: 'editor' });
-    setTimeout(() => {
-      this.closeModal.emit();
-    }, 800);
+    this.closeModal.emit();
   }
 }

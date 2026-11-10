@@ -4,7 +4,6 @@
   <app-navbar
     (openNewProjectModal)="openNewProject()"
     (openAuthModal)="openAuth()"
-    (openWorkspaceModal)="openWorkspace()"
     (openGoogleSheetImport)="openGoogleSheetImport()"
     (triggerPdfExport)="exportPdf()"
     (triggerCsvExport)="exportCsv()"
@@ -76,7 +75,7 @@
         <span>{{ i18n.t().analytics }}</span>
       </button>
 
-      <!-- 4. Team Chat & AI Advisor Tab -->
+      <!-- 4. Gemini Chat Tab -->
       <button
         type="button"
         (click)="setTab('chat')"
@@ -89,12 +88,12 @@
         [class.hover:text-slate-800]="activeTab() !== 'chat'"
         [class.dark:hover:text-slate-200]="activeTab() !== 'chat'"
       >
-        <mat-icon class="text-lg">forum</mat-icon>
+        <mat-icon class="text-lg">auto_awesome</mat-icon>
         <span>{{ i18n.t().teamChat }}</span>
         <span class="w-2 h-2 rounded-full bg-purple-500"></span>
       </button>
 
-      <!-- 5. Showroom Maps Tab (Google Maps) -->
+      <!-- 5. Maps Tab (Google Maps) -->
       <button
         type="button"
         (click)="setTab('maps')"
@@ -108,23 +107,11 @@
         [class.dark:hover:text-slate-200]="activeTab() !== 'maps'"
       >
         <mat-icon class="text-lg">map</mat-icon>
-        <span>{{ i18n.currentLang() === 'ar' ? 'خريطة المعارض (Google Maps)' : 'Showrooms Map' }}</span>
+        <span>{{ i18n.t().mapsTab }}</span>
         <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold">
           Maps
         </span>
       </button>
-
-      <!-- Workspace & Firebase Quick Trigger -->
-      <div class="ms-auto flex items-center gap-2 pb-2">
-        <button
-          type="button"
-          (click)="openWorkspace()"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
-        >
-          <mat-icon class="!text-sm !w-4 !h-4">cloud_sync</mat-icon>
-          <span>{{ i18n.currentLang() === 'ar' ? 'Google Workspace و Firebase' : 'Workspace & Firebase' }}</span>
-        </button>
-      </div>
 
     </div>
 
@@ -163,14 +150,6 @@
   </main>
 
   <!-- Modals -->
-  @if (showWorkspaceModal()) {
-    <app-workspace-modal
-      [project]="storage.activeProject()"
-      [items]="storage.currentProjectItems()"
-      [lang]="i18n.currentLang()"
-      (closeModal)="showWorkspaceModal.set(false)"
-    ></app-workspace-modal>
-  }
   @if (showItemModal()) {
     <app-item-modal
       [item]="editingItem()"

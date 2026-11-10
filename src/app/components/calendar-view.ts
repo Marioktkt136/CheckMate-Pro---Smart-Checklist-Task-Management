@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { I18nService } from '../services/i18n.service';
@@ -20,7 +20,7 @@ import { ChecklistItem, createGoogleCalendarUrl } from '../core/checklist-rules'
             <span>{{ i18n.t().calendar }}</span>
           </h2>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {{ i18n.isRtl() ? 'جدول زمني لمواعيد شراء واستلام الأجهزة والميلستون للمشروع' : 'Visual timeline of target purchase and delivery milestones' }}
+            {{ i18n.isRtl() ? 'جدول زمني لمواعيد شراء واستلام الأصناف والأجهزة للمشروع' : 'Visual timeline of target purchase and delivery milestones' }}
           </p>
         </div>
 
@@ -31,9 +31,16 @@ import { ChecklistItem, createGoogleCalendarUrl } from '../core/checklist-rules'
           class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 transition cursor-pointer"
         >
           <mat-icon class="text-base">event_note</mat-icon>
-          <span>تصدير ملف التقويم (.ics)</span>
+          <span>{{ i18n.isRtl() ? 'تصدير ملف التقويم (.ics)' : 'Export Calendar (.ics)' }}</span>
         </button>
       </div>
+
+      @if (exportMessage()) {
+        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 font-semibold flex items-center gap-2">
+          <mat-icon class="text-amber-600 text-base">info</mat-icon>
+          <span>{{ exportMessage() }}</span>
+        </div>
+      }
 
       <!-- Timeline of Items by Target Date -->
       <div class="space-y-3">
@@ -45,7 +52,7 @@ import { ChecklistItem, createGoogleCalendarUrl } from '../core/checklist-rules'
                 {{ monthGroup.monthYear }}
               </span>
               <span class="text-xs text-slate-500 font-medium">
-                {{ monthGroup.items.length }} موعد مستهدف
+                {{ monthGroup.items.length }} {{ i18n.isRtl() ? 'موعد مستهدف' : 'target milestone(s)' }}
               </span>
             </div>
 
@@ -61,7 +68,7 @@ import { ChecklistItem, createGoogleCalendarUrl } from '../core/checklist-rules'
                     <div>
                       <div class="flex items-center gap-2">
                         <span class="font-bold text-sm text-slate-900 dark:text-slate-100">
-                          {{ i18n.isRtl() ? item.titleAr : item.titleEn }}
+                          {{ i18n.isRtl() ? item.titleAr : (item.titleEn || item.titleAr) }}
                         </span>
                         <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
                               [class.bg-emerald-100]="item.status === 'purchased'"
@@ -72,18 +79,18 @@ import { ChecklistItem, createGoogleCalendarUrl } from '../core/checklist-rules'
                               [class.text-amber-700]="item.status === 'comparing'"
                               [class.bg-slate-100]="item.status === 'pending'"
                               [class.text-slate-600]="item.status === 'pending'">
-                          {{ item.status === 'purchased' ? 'تم الشراء' : item.status === 'delivered' ? 'تم التوصيل' : item.status === 'comparing' ? 'قيد المقارنة' : 'لسه' }}
+                          {{ item.status === 'purchased' ? i18n.t().statusPurchased : item.status === 'delivered' ? i18n.t().statusDelivered : item.status === 'comparing' ? i18n.t().statusComparing : i18n.t().statusPending }}
                         </span>
                       </div>
 
                       <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {{ item.category }} • {{ item.myNotes || item.notes || 'لا توجد ملاحظات إضافية' }}
+                        {{ item.category }} • {{ item.myNotes || item.notes || (i18n.isRtl() ? 'لا توجد ملاحظات إضافية' : 'No additional notes') }}
                       </p>
 
                       <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-1">
-                        <span>الميزانية: {{ (item.actualCost || item.estimatedCost || 0).toLocaleString() }} {{ item.currency }}</span>
-                        @if (item.assignee) {
-                          <span>• المسؤول: {{ item.assignee.name }}</span>
+                        <span>{{ i18n.isRtl() ? 'الميزانية:' : 'Budget:' }} {{ (item.actualCost || item.estimatedCost || 0).toLocaleString() }} {{ i18n.t().currencyEgp }}</span>
+                        @if (item.storeLocation || item.storeName) {
+                          <span>• {{ item.storeLocation || item.storeName }}</span>
                         }
                       </div>
                     </div>
@@ -98,7 +105,7 @@ import { ChecklistItem, createGoogleCalendarUrl } from '../core/checklist-rules'
                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
                     >
                       <mat-icon class="text-sm">event</mat-icon>
-                      <span>تقويم جوجل</span>
+                      <span>{{ i18n.isRtl() ? 'تقويم جوجل' : 'Google Calendar' }}</span>
                     </a>
                   </div>
                 </div>
@@ -108,8 +115,12 @@ import { ChecklistItem, createGoogleCalendarUrl } from '../core/checklist-rules'
         } @empty {
           <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
             <mat-icon class="text-slate-300 dark:text-slate-600 text-5xl">event_busy</mat-icon>
-            <h3 class="mt-2 text-base font-bold text-slate-800 dark:text-slate-200">لا توجد مواعيد محددة بعد</h3>
-            <p class="text-xs text-slate-400 mt-1">حدد تواريخ الشراء المستهدفة للأصناف لتظهر في هذا التقويم الزمني.</p>
+            <h3 class="mt-2 text-base font-bold text-slate-800 dark:text-slate-200">
+              {{ i18n.isRtl() ? 'لا توجد مواعيد محددة بعد' : 'No Target Dates Scheduled Yet' }}
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+              {{ i18n.isRtl() ? 'حدد تواريخ الشراء المستهدفة للأصناف لتظهر في هذا التقويم الزمني.' : 'Set a Target Purchase Date on any item to see it in this timeline.' }}
+            </p>
           </div>
         }
       </div>
@@ -120,6 +131,7 @@ import { ChecklistItem, createGoogleCalendarUrl } from '../core/checklist-rules'
 export class CalendarViewComponent {
   i18n = inject(I18nService);
   storage = inject(StorageService);
+  exportMessage = signal<string>('');
 
   timelineItems = computed(() => {
     const items = this.storage.currentProjectItems().filter(i => !!i.targetDate);
@@ -127,7 +139,7 @@ export class CalendarViewComponent {
 
     const groups = new Map<string, ChecklistItem[]>();
     for (const it of items) {
-      const ym = it.targetDate ? it.targetDate.substring(0, 7) : 'بدون موعد';
+      const ym = it.targetDate ? it.targetDate.substring(0, 7) : (this.i18n.isRtl() ? 'بدون موعد' : 'Unscheduled');
       if (!groups.has(ym)) {
         groups.set(ym, []);
       }
@@ -154,7 +166,12 @@ export class CalendarViewComponent {
   downloadIcsFile() {
     const items = this.storage.currentProjectItems().filter(i => !!i.targetDate);
     if (items.length === 0) {
-      alert('لا توجد أصناف بتواريخ محددة للتصدير.');
+      this.exportMessage.set(
+        this.i18n.isRtl()
+          ? 'لا توجد أصناف بتواريخ محددة للتصدير.'
+          : 'No items with target purchase dates found to export.'
+      );
+      setTimeout(() => this.exportMessage.set(''), 3500);
       return;
     }
 

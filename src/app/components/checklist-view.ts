@@ -86,53 +86,6 @@ const CATEGORY_EN_MAP: Record<string, string> = {
           </div>
         </div>
 
-        <!-- Account Data Separation Filter: All vs Mine vs Published -->
-        <div class="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
-          <div class="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
-            <mat-icon class="!text-sm !w-4 !h-4 text-blue-600">badge</mat-icon>
-            <span>{{ i18n.t().accountData }}</span>
-            <span class="text-blue-600 dark:text-blue-400 font-extrabold">
-              {{ i18n.isRtl() ? auth.currentUser().name : auth.currentUser().nameEn }}
-            </span>
-          </div>
-
-          <div class="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-            <button
-              type="button"
-              (click)="storage.dataScope.set('all')"
-              class="px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer"
-              [class.bg-blue-600]="storage.dataScope() === 'all'"
-              [class.text-white]="storage.dataScope() === 'all'"
-              [class.text-slate-600]="storage.dataScope() !== 'all'"
-              [class.dark:text-slate-400]="storage.dataScope() !== 'all'"
-            >
-              {{ i18n.t().allData }}
-            </button>
-            <button
-              type="button"
-              (click)="storage.dataScope.set('mine')"
-              class="px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer"
-              [class.bg-blue-600]="storage.dataScope() === 'mine'"
-              [class.text-white]="storage.dataScope() === 'mine'"
-              [class.text-slate-600]="storage.dataScope() !== 'mine'"
-              [class.dark:text-slate-400]="storage.dataScope() !== 'mine'"
-            >
-              {{ i18n.t().myPrivateData }} ({{ storage.userItemsCount() }})
-            </button>
-            <button
-              type="button"
-              (click)="storage.dataScope.set('published')"
-              class="px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer"
-              [class.bg-blue-600]="storage.dataScope() === 'published'"
-              [class.text-white]="storage.dataScope() === 'published'"
-              [class.text-slate-600]="storage.dataScope() !== 'published'"
-              [class.dark:text-slate-400]="storage.dataScope() !== 'published'"
-            >
-              {{ i18n.t().publishedToAll }} ({{ storage.publishedItemsCount() }})
-            </button>
-          </div>
-        </div>
-
         <!-- Category Horizontal Scrollable Bar (Mobile-Optimized) -->
         <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
           <div class="flex items-center justify-between mb-1.5">
@@ -256,16 +209,6 @@ const CATEGORY_EN_MAP: Record<string, string> = {
         </div>
       </div>
 
-      <!-- Instruction Hint Banner matching Excel sheet note -->
-      <div class="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-200">
-        <mat-icon class="text-amber-600 dark:text-amber-400 shrink-0">info</mat-icon>
-        <p>
-          {{ i18n.isRtl() 
-            ? '💡 بعد الشراء اختر ✅ تم الشراء من القائمة. الخلايا ذات الإطار الأصفر مخصصة لملاحظاتك الخاصة (مثال: ماركة X - معرض Y أو الضمان والسعر).'
-            : '💡 Once purchased, mark item as ✅ Purchased. The highlighted notes column is reserved for your custom notes (e.g., Brand X - Showroom Y).' }}
-        </p>
-      </div>
-
       <!-- Grouped Checklist Display (Desktop Table + Mobile Cards) -->
       @for (group of groupedItems(); track group.category) {
         <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
@@ -314,24 +257,14 @@ const CATEGORY_EN_MAP: Record<string, string> = {
                       <div class="font-bold text-sm text-slate-900 dark:text-slate-100">
                         {{ i18n.isRtl() ? item.titleAr : (item.titleEn || item.titleAr) }}
                       </div>
-                      <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                      <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                         <span>#{{ item.itemNumber }} • {{ displayCategory(item.category) }}</span>
-                        <button
-                          type="button"
-                          (click)="storage.togglePublishItem(item.id)"
-                          class="px-1.5 py-0.2 rounded text-[9px] font-bold inline-flex items-center gap-0.5 cursor-pointer transition"
-                          [class.bg-emerald-100]="item.isPublished"
-                          [class.text-emerald-800]="item.isPublished"
-                          [class.dark:bg-emerald-950]="item.isPublished"
-                          [class.dark:text-emerald-300]="item.isPublished"
-                          [class.bg-slate-100]="!item.isPublished"
-                          [class.text-slate-600]="!item.isPublished"
-                          [class.dark:bg-slate-800]="!item.isPublished"
-                          [title]="i18n.t().publishedToggleHint"
-                        >
-                          <mat-icon class="!text-[10px] !w-2.5 !h-2.5">{{ item.isPublished ? 'public' : 'lock' }}</mat-icon>
-                          <span>{{ item.isPublished ? i18n.t().publishedBadge : i18n.t().privateBadge }}</span>
-                        </button>
+                        @if (item.storeLocation || item.storeName) {
+                          <span class="px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 inline-flex items-center gap-0.5 font-medium">
+                            <mat-icon class="!text-[10px] !w-2.5 !h-2.5">location_on</mat-icon>
+                            <span>{{ item.storeLocation || item.storeName }}</span>
+                          </span>
+                        }
                       </div>
                     </div>
                   </div>
@@ -398,7 +331,7 @@ const CATEGORY_EN_MAP: Record<string, string> = {
                   <!-- Cost -->
                   <div class="font-bold text-slate-800 dark:text-slate-200 text-xs">
                     {{ (item.actualCost || item.estimatedCost || 0).toLocaleString() }}
-                    <span class="text-[10px] text-slate-400 font-normal">{{ item.currency }}</span>
+                    <span class="text-[10px] text-slate-400 font-normal">{{ i18n.t().currencyEgp }}</span>
                   </div>
 
                   <!-- Quick Icons -->
@@ -495,24 +428,12 @@ const CATEGORY_EN_MAP: Record<string, string> = {
                             {{ i18n.isRtl() ? item.titleAr : (item.titleEn || item.titleAr) }}
                           </div>
                           <div class="flex items-center gap-1.5 flex-wrap mt-1">
-                            <button
-                              type="button"
-                              (click)="storage.togglePublishItem(item.id)"
-                              class="text-[9px] px-1.5 py-0.2 rounded font-bold inline-flex items-center gap-0.5 cursor-pointer transition"
-                              [class.bg-emerald-100]="item.isPublished"
-                              [class.text-emerald-800]="item.isPublished"
-                              [class.dark:bg-emerald-950]="item.isPublished"
-                              [class.dark:text-emerald-300]="item.isPublished"
-                              [class.bg-slate-100]="!item.isPublished"
-                              [class.text-slate-600]="!item.isPublished"
-                              [class.dark:bg-slate-800]="!item.isPublished"
-                              [class.dark:text-slate-400]="!item.isPublished"
-                              [title]="i18n.t().publishedToggleHint"
-                            >
-                              <mat-icon class="!text-[10px] !w-2.5 !h-2.5">{{ item.isPublished ? 'public' : 'lock' }}</mat-icon>
-                              <span>{{ item.isPublished ? i18n.t().publishedBadge : i18n.t().privateBadge }}</span>
-                            </button>
-
+                            @if (item.storeLocation || item.storeName) {
+                              <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 inline-flex items-center gap-0.5 font-medium">
+                                <mat-icon class="!text-[10px] !w-2.5 !h-2.5">location_on</mat-icon>
+                                <span>{{ item.storeLocation || item.storeName }}</span>
+                              </span>
+                            }
                             @if (item.tags && item.tags.length > 0) {
                               @for (tag of item.tags; track tag) {
                                 <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
@@ -609,7 +530,7 @@ const CATEGORY_EN_MAP: Record<string, string> = {
                     <td class="py-3.5 px-3 text-xs">
                       <div class="font-bold text-slate-800 dark:text-slate-200">
                         {{ (item.actualCost || item.estimatedCost || 0).toLocaleString() }}
-                        <span class="text-[10px] text-slate-400 font-normal">{{ item.currency }}</span>
+                        <span class="text-[10px] text-slate-400 font-normal">{{ i18n.t().currencyEgp }}</span>
                       </div>
                       @if (item.targetDate) {
                         <div class="text-[10px] text-blue-600 dark:text-blue-400 flex items-center gap-0.5 mt-0.5">
@@ -623,7 +544,7 @@ const CATEGORY_EN_MAP: Record<string, string> = {
                     <td class="py-3.5 px-3 text-center">
                       <div class="flex items-center justify-center gap-1">
                         
-                        <!-- AI Consultant for this appliance -->
+                        <!-- AI Consultant for this item -->
                         <button
                           type="button"
                           (click)="consultAiTrigger.emit(item)"
@@ -712,7 +633,7 @@ const CATEGORY_EN_MAP: Record<string, string> = {
         <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
           <mat-icon class="text-slate-300 dark:text-slate-600 text-5xl">search_off</mat-icon>
           <h3 class="mt-2 text-base font-bold text-slate-800 dark:text-slate-200">
-            {{ i18n.isRtl() ? 'لا توجد أصناف في هذا النطاق حالياً' : 'No items found in this view' }}
+            {{ i18n.isRtl() ? 'لا توجد أصناف في هذا المشروع حالياً' : 'No items found in this project' }}
           </h3>
           <p class="text-xs text-slate-400 mt-1">
             {{ i18n.isRtl() ? 'أضف صنفاً جديداً لحسابك أو قم باستيراد جدول Google Sheets.' : 'Add a new item to your account or import a Google Sheet.' }}
@@ -742,7 +663,7 @@ export class ChecklistViewComponent {
   openGoogleSheetImport = output<void>();
 
   categories = computed(() => {
-    const set = new Set<string>();
+    const set = new Set<string>(this.storage.categories());
     for (const it of this.storage.currentProjectItems()) {
       if (it.category) set.add(it.category);
     }

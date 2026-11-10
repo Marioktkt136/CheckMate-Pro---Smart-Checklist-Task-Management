@@ -1,258 +1,290 @@
-import { ChangeDetectionStrategy, Component, input, output, signal, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { GoogleMap, MapMarker, MapInfoWindow } from '@angular/google-maps';
+import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
-import { ChecklistItem } from '../core/checklist-rules';
-
-export interface ApplianceStore {
-  id: string;
-  nameAr: string;
-  nameEn: string;
-  brand: string;
-  addressAr: string;
-  addressEn: string;
-  phone: string;
-  rating: number;
-  openHours: string;
-  specialDealsAr: string;
-  specialDealsEn: string;
-  position: google.maps.LatLngLiteral;
-}
-
-const APPLIANCE_STORES: ApplianceStore[] = [
-  {
-    id: 'store-1',
-    nameAr: 'بي تك - فرع عباس العقاد، مدينة نصر',
-    nameEn: 'B.Tech - Abbas El Akkad, Nasr City',
-    brand: 'B.Tech',
-    addressAr: 'شارع عباس العقاد، أمام الحديقة الدولية، مدينة نصر، القاهرة',
-    addressEn: 'Abbas El Akkad St, Nasr City, Cairo',
-    phone: '19966',
-    rating: 4.6,
-    openHours: '10:00 AM - 11:00 PM',
-    specialDealsAr: 'تقسيط حتى 24 شهر بدون فوائد على الثلاجات والغسالات',
-    specialDealsEn: '0% interest installment up to 24 months on fridges & washers',
-    position: { lat: 30.0561, lng: 31.3412 }
-  },
-  {
-    id: 'store-2',
-    nameAr: 'العربي سنتر - مصر الجديدة',
-    nameEn: 'Elaraby Center - Heliopolis',
-    brand: 'Elaraby',
-    addressAr: 'ميدان روكسي، مصر الجديدة، القاهرة',
-    addressEn: 'Roxy Square, Heliopolis, Cairo',
-    phone: '19319',
-    rating: 4.8,
-    openHours: '09:30 AM - 10:30 PM',
-    specialDealsAr: 'ضمان العربي الشامل 10 سنوات على ثلاجات ومكانس توشيبا وشارب وتورنيدو',
-    specialDealsEn: '10-year official Elaraby warranty on Sharp & Tornado appliances',
-    position: { lat: 30.0934, lng: 31.3182 }
-  },
-  {
-    id: 'store-3',
-    nameAr: 'كارفور سيتي سنتر ألماظة',
-    nameEn: 'Carrefour - City Centre Almaza',
-    brand: 'Carrefour',
-    addressAr: 'طريق السويس، مصر الجديدة، القاهرة',
-    addressEn: 'Suez Road, Almaza, Cairo',
-    phone: '16061',
-    rating: 4.7,
-    openHours: '09:00 AM - 12:00 AM',
-    specialDealsAr: 'خصم 10% نقاط كاش باك على الخلاطات والقلايات الهوائية',
-    specialDealsEn: '10% MyClub cashback points on blenders & air fryers',
-    position: { lat: 30.0886, lng: 31.3654 }
-  },
-  {
-    id: 'store-4',
-    nameAr: 'معرض فريش الرئيسي - التجمع الخامس',
-    nameEn: 'Fresh Showroom - 5th Settlement',
-    brand: 'Fresh',
-    addressAr: 'شارع التسعين الشمالي، التجمع الخامس، القاهرة الجديدة',
-    addressEn: 'North 90th St, New Cairo',
-    phone: '19059',
-    rating: 4.5,
-    openHours: '10:00 AM - 10:00 PM',
-    specialDealsAr: 'عرض خاص على بوتاجازات فريش 5 شعلة أمان كامل',
-    specialDealsEn: 'Special package discount on 5-burner gas cookers with full safety',
-    position: { lat: 30.0278, lng: 31.4721 }
-  },
-  {
-    id: 'store-5',
-    nameAr: 'إل جي براند شوب - المهندسين',
-    nameEn: 'LG Brand Shop - Mohandessin',
-    brand: 'LG',
-    addressAr: 'شارع جامعة الدول العربية، المهندسين، الجيزة',
-    addressEn: 'Gamat El Dowal Al Arabiya St, Mohandessin, Giza',
-    phone: '19960',
-    rating: 4.9,
-    openHours: '10:00 AM - 11:00 PM',
-    specialDealsAr: 'ضمان 10 سنوات على موتور Direct Drive للغسالات الأوتوماتيك',
-    specialDealsEn: '10-year direct drive motor warranty on front-load washing machines',
-    position: { lat: 30.0524, lng: 31.2001 }
-  },
-  {
-    id: 'store-6',
-    nameAr: 'رنين - فرع الهرم',
-    nameEn: 'Raneen - Haram Branch',
-    brand: 'Raneen',
-    addressAr: 'شارع الهرم الرئيسي، بجوار محطة نصر الدين، الجيزة',
-    addressEn: 'Al Haram Main St, Giza',
-    phone: '16113',
-    rating: 4.3,
-    openHours: '10:00 AM - 11:30 PM',
-    specialDealsAr: 'عروض مستلزمات جهاز العروسة والأجهزة الصغيرة ومكواة البخار',
-    specialDealsEn: 'Special bridal bundles for small kitchen appliances & irons',
-    position: { lat: 29.9984, lng: 31.1892 }
-  }
-];
+import { ChecklistItem, MapLocation } from '../core/checklist-rules';
+import { StorageService } from '../services/storage.service';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-maps-view',
-  imports: [CommonModule, GoogleMap, MapMarker, MapInfoWindow, MatIconModule],
+  imports: [CommonModule, ReactiveFormsModule, MatIconModule],
   template: `
     <div class="space-y-6">
-      <!-- Demo Key In-App Quota Defense Banner (As required by Google Maps Platform guidelines) -->
-      @if (quotaExceeded()) {
-        <div class="bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 px-4 py-2.5 text-xs md:text-sm text-center rounded-xl shadow-sm">
-          <span>
-            Google Maps Platform quota reached. If you are the app owner, visit
-            <a
-              href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="underline font-semibold text-amber-950 dark:text-amber-100 hover:text-amber-800"
-            >
-              maps developer site
-            </a>
-            for instructions to update your account.
-          </span>
-        </div>
-      }
-
-      <!-- Header & Store Filter Controls -->
+      <!-- Header & Category Filter Controls -->
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <div>
-          <div class="flex items-center gap-2">
-            <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <mat-icon>storefront</mat-icon>
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <mat-icon>map</mat-icon>
             </div>
-            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">
-              {{ lang() === 'ar' ? 'خريطة معارض ومتاجر الأجهزة الكهربائية' : 'Appliance Stores & Showrooms Map' }}
-            </h2>
+            <div>
+              <h2 class="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">
+                {{ lang() === 'ar' ? 'الخرائط والمواقع المحفوظة (Google Maps)' : 'Maps & Saved Locations (Google Maps)' }}
+              </h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {{ lang() === 'ar'
+                  ? 'استعرض وأضف أي موقع، متجر، معرض أثاث، تشطيبات، أو موقع مشروع واربطه بأصناف قائمتك'
+                  : 'Explore and save any store, showroom, furniture hub, contractor, or custom location and link it to your items' }}
+              </p>
+            </div>
           </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {{ lang() === 'ar' ? 'حدد معارض الشراء لمقارنة الأسعار والعروض الترويجية وربطها بأصناف قائمتك' : 'Browse appliance stores, compare exclusive showroom offers, and link stores to your items' }}
-          </p>
         </div>
 
-        <!-- Filter Chips -->
+        <!-- Add Custom Map Location Button + Category Filter Chips -->
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            (click)="selectedBrand.set('ALL')"
-            [class.bg-blue-600]="selectedBrand() === 'ALL'"
-            [class.text-white]="selectedBrand() === 'ALL'"
-            [class.bg-slate-100]="selectedBrand() !== 'ALL'"
-            [class.dark:bg-slate-800]="selectedBrand() !== 'ALL'"
-            [class.text-slate-700]="selectedBrand() !== 'ALL'"
-            [class.dark:text-slate-300]="selectedBrand() !== 'ALL'"
+            (click)="showAddLocationForm.set(!showAddLocationForm())"
+            class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <mat-icon class="!text-sm !w-4 !h-4">{{ showAddLocationForm() ? 'close' : 'add_location_alt' }}</mat-icon>
+            <span>{{ lang() === 'ar' ? 'إضافة موقع جديد للخريطة' : 'Add Custom Location' }}</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="selectCategory('ALL')"
+            [class.bg-blue-600]="selectedCategory() === 'ALL'"
+            [class.text-white]="selectedCategory() === 'ALL'"
+            [class.bg-slate-100]="selectedCategory() !== 'ALL'"
+            [class.dark:bg-slate-800]="selectedCategory() !== 'ALL'"
+            [class.text-slate-700]="selectedCategory() !== 'ALL'"
+            [class.dark:text-slate-300]="selectedCategory() !== 'ALL'"
             class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
           >
-            {{ lang() === 'ar' ? 'جميع المعارض' : 'All Stores' }}
+            {{ lang() === 'ar' ? 'جميع المواقع' : 'All Locations' }} ({{ storage.mapLocations().length }})
           </button>
-          @for (brand of brands; track brand) {
+
+          @for (cat of locationCategories; track cat.id) {
             <button
               type="button"
-              (click)="selectedBrand.set(brand)"
-              [class.bg-blue-600]="selectedBrand() === brand"
-              [class.text-white]="selectedBrand() === brand"
-              [class.bg-slate-100]="selectedBrand() !== brand"
-              [class.dark:bg-slate-800]="selectedBrand() !== brand"
-              [class.text-slate-700]="selectedBrand() !== brand"
-              [class.dark:text-slate-300]="selectedBrand() !== brand"
+              (click)="selectCategory(cat.id)"
+              [class.bg-blue-600]="selectedCategory() === cat.id"
+              [class.text-white]="selectedCategory() === cat.id"
+              [class.bg-slate-100]="selectedCategory() !== cat.id"
+              [class.dark:bg-slate-800]="selectedCategory() !== cat.id"
+              [class.text-slate-700]="selectedCategory() !== cat.id"
+              [class.dark:text-slate-300]="selectedCategory() !== cat.id"
               class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
             >
-              {{ brand }}
+              {{ lang() === 'ar' ? cat.labelAr : cat.labelEn }}
             </button>
           }
         </div>
       </div>
 
-      <!-- Main Layout: Map & Store Cards -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Interactive Google Map View -->
-        <div class="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2 shadow-sm overflow-hidden flex flex-col">
-          <div class="relative w-full h-[520px] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
-            <google-map
-              height="100%"
-              width="100%"
-              [center]="mapCenter"
-              [zoom]="mapZoom"
-              [options]="mapOptions"
-            >
-              @for (store of filteredStores(); track store.id) {
-                <map-marker
-                  #marker="mapMarker"
-                  [position]="store.position"
-                  [title]="lang() === 'ar' ? store.nameAr : store.nameEn"
-                  (mapClick)="openInfoWindow(marker, store)"
-                />
-              }
-
-              <map-info-window #infoWindow>
-                @if (activeStore()) {
-                  <div class="p-2 max-w-xs text-slate-800 font-sans" dir="rtl">
-                    <h4 class="font-bold text-sm text-blue-600 mb-1">
-                      {{ lang() === 'ar' ? activeStore()?.nameAr : activeStore()?.nameEn }}
-                    </h4>
-                    <p class="text-xs text-slate-600 mb-1">
-                      📍 {{ lang() === 'ar' ? activeStore()?.addressAr : activeStore()?.addressEn }}
-                    </p>
-                    <p class="text-xs text-slate-500 mb-2">
-                      ⏰ {{ activeStore()?.openHours }} | 📞 {{ activeStore()?.phone }}
-                    </p>
-                    <div class="bg-amber-50 text-amber-900 p-1.5 rounded text-xs mb-2">
-                      🎁 {{ lang() === 'ar' ? activeStore()?.specialDealsAr : activeStore()?.specialDealsEn }}
-                    </div>
-                    <a
-                      [href]="'https://www.google.com/maps/dir/?api=1&destination=' + activeStore()?.position?.lat + ',' + activeStore()?.position?.lng"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="inline-flex items-center gap-1 text-xs bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-700"
-                    >
-                      <mat-icon class="!text-xs !w-3 !h-3">directions</mat-icon>
-                      {{ lang() === 'ar' ? 'الاتجاهات عبر Google Maps' : 'Directions in Google Maps' }}
-                    </a>
-                  </div>
-                }
-              </map-info-window>
-            </google-map>
+      <!-- Add New Custom Location Form -->
+      @if (showAddLocationForm()) {
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/70 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <mat-icon class="text-emerald-600 text-lg">add_location_alt</mat-icon>
+              <span>{{ lang() === 'ar' ? 'إضافة موقع أو مكان جديد إلى خرائط حسابك' : 'Save a New Place / Location to Your Maps' }}</span>
+            </h3>
           </div>
 
-          <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-b-xl flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
-            <span class="flex items-center gap-1">
-              <mat-icon class="!text-sm !w-4 !h-4 text-emerald-500">verified</mat-icon>
-              {{ lang() === 'ar' ? 'معارض معتمدة وموزعون رسميون للأجهزة' : 'Verified official distributors & retail showrooms' }}
-            </span>
-            <span class="text-[11px] opacity-75">
-              Powered by Google Maps Platform (gmp_mcp_codeassist_v1_aistudio)
-            </span>
+          <form [formGroup]="newLocationForm" (ngSubmit)="onAddLocation()" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+            <div>
+              <label for="loc-name" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {{ lang() === 'ar' ? 'اسم المكان / الموقع *' : 'Location / Place Name *' }}
+              </label>
+              <input
+                id="loc-name"
+                type="text"
+                formControlName="name"
+                [placeholder]="lang() === 'ar' ? 'مثال: معرض أثاث، ورشة، موقع شقة، مول...' : 'e.g. Furniture Showroom, Project Site, Mall...'"
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <div>
+              <label for="loc-cat" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {{ lang() === 'ar' ? 'تصنيف الموقع' : 'Location Category' }}
+              </label>
+              <select
+                id="loc-cat"
+                formControlName="category"
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+              >
+                @for (cat of locationCategories; track cat.id) {
+                  <option [value]="cat.id">{{ lang() === 'ar' ? cat.labelAr : cat.labelEn }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label for="loc-address" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {{ lang() === 'ar' ? 'العنوان أو المنطقة *' : 'Address or Area *' }}
+              </label>
+              <input
+                id="loc-address"
+                type="text"
+                formControlName="address"
+                [placeholder]="lang() === 'ar' ? 'مثال: التجمع الخامس، القاهرة الجديدة' : 'e.g. New Cairo, 5th Settlement'"
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <div>
+              <label for="loc-phone" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {{ lang() === 'ar' ? 'رقم الهاتف (اختياري)' : 'Phone Number (Optional)' }}
+              </label>
+              <input
+                id="loc-phone"
+                type="text"
+                formControlName="phone"
+                placeholder="010xxxxxxxx / 19xxx"
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <div>
+              <label for="loc-notes" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {{ lang() === 'ar' ? 'ملاحظات / عروض / تفاصيل المكان' : 'Notes / Deals / Details' }}
+              </label>
+              <input
+                id="loc-notes"
+                type="text"
+                formControlName="notes"
+                [placeholder]="lang() === 'ar' ? 'مثال: خصم نقدي أو مواعيد العمل' : 'e.g. Special discount, contact person, hours'"
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <div class="flex items-end gap-2">
+              <button
+                type="submit"
+                [disabled]="newLocationForm.invalid"
+                class="w-full py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <mat-icon class="!text-sm !w-4 !h-4">save</mat-icon>
+                <span>{{ lang() === 'ar' ? 'حفظ الموقع في الخريطة' : 'Save Location to Map' }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      }
+
+      <!-- Main Layout: Map & Locations Directory -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Interactive Google Map View -->
+        <div class="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 shadow-sm overflow-hidden flex flex-col space-y-2.5">
+          
+          <!-- Free-text Map Search Bar -->
+          <div class="flex items-center gap-2">
+            <div class="relative flex-1">
+              <input
+                type="text"
+                [value]="customSearchQuery()"
+                (input)="onMapSearchInput($event)"
+                (keydown.enter)="searchOnMap()"
+                [placeholder]="lang() === 'ar' ? 'ابحث عن أي مكان أو عنوان على خرائط Google...' : 'Search any place, address, or city on Google Maps...'"
+                class="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              type="button"
+              (click)="searchOnMap()"
+              class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0"
+            >
+              <mat-icon class="!text-sm !w-4 !h-4">search</mat-icon>
+              <span>{{ lang() === 'ar' ? 'بحث في الخريطة' : 'Search Map' }}</span>
+            </button>
+          </div>
+
+          <!-- Quick Pin Selector Bar -->
+          <div class="flex items-center gap-2 overflow-x-auto pb-1 px-1">
+            @for (loc of filteredLocations(); track loc.id) {
+              <button
+                type="button"
+                (click)="focusOnLocation(loc)"
+                [class.bg-blue-600]="activeLocation().id === loc.id"
+                [class.text-white]="activeLocation().id === loc.id"
+                [class.border-blue-600]="activeLocation().id === loc.id"
+                [class.bg-slate-50]="activeLocation().id !== loc.id"
+                [class.dark:bg-slate-800]="activeLocation().id !== loc.id"
+                [class.text-slate-700]="activeLocation().id !== loc.id"
+                [class.dark:text-slate-300]="activeLocation().id !== loc.id"
+                [class.border-slate-200]="activeLocation().id !== loc.id"
+                [class.dark:border-slate-700]="activeLocation().id !== loc.id"
+                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer"
+              >
+                <mat-icon class="!text-sm !w-4 !h-4">location_on</mat-icon>
+                <span>{{ lang() === 'ar' ? loc.nameAr : loc.nameEn }}</span>
+              </button>
+            }
+          </div>
+
+          <div class="relative w-full h-[460px] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+            <iframe
+              [src]="safeMapUrl()"
+              title="Google Maps Location Viewer"
+              class="w-full h-full border-0"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              allowfullscreen
+            ></iframe>
+
+            <!-- Floating Selected Location Info Card -->
+            @if (activeLocation(); as loc) {
+              <div class="absolute bottom-3 inset-x-3 md:inset-x-auto md:end-3 md:w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-700 rounded-xl p-3.5 shadow-lg">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                  <h4 class="font-bold text-xs md:text-sm text-blue-600 dark:text-blue-400">
+                    {{ lang() === 'ar' ? loc.nameAr : loc.nameEn }}
+                  </h4>
+                  <span class="inline-flex items-center gap-0.5 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded shrink-0">
+                    ★ {{ loc.rating }}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-600 dark:text-slate-300 mb-1">
+                  📍 {{ lang() === 'ar' ? loc.addressAr : loc.addressEn }}
+                </p>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+                  ⏰ {{ loc.openHours }} | 📞 {{ loc.phone }}
+                </p>
+                @if (loc.specialDealsAr || loc.specialDealsEn) {
+                  <div class="bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 p-2 rounded-lg text-[11px] mb-2.5">
+                    💡 {{ lang() === 'ar' ? loc.specialDealsAr : loc.specialDealsEn }}
+                  </div>
+                }
+                <div class="flex items-center gap-2">
+                  <a
+                    [href]="'https://www.google.com/maps/search/?api=1&query=' + encodeQuery((lang() === 'ar' ? loc.nameAr : loc.nameEn) + ' ' + (lang() === 'ar' ? loc.addressAr : loc.addressEn))"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="flex-1 inline-flex items-center justify-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"
+                  >
+                    <mat-icon class="!text-sm !w-4 !h-4">directions</mat-icon>
+                    {{ lang() === 'ar' ? 'فتح في Google Maps' : 'Open in Google Maps' }}
+                  </a>
+                  <button
+                    type="button"
+                    (click)="assignLocationId.set(loc.id)"
+                    class="inline-flex items-center justify-center gap-1 text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-2.5 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer"
+                  >
+                    <mat-icon class="!text-sm !w-4 !h-4">check_circle</mat-icon>
+                    {{ lang() === 'ar' ? 'اختيار' : 'Select' }}
+                  </button>
+                </div>
+              </div>
+            }
           </div>
         </div>
 
-        <!-- Store Directory & Assign to Item Sidebar -->
+        <!-- Locations Directory & Link to Item Sidebar -->
         <div class="space-y-4">
           <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm">
             <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm mb-3 flex items-center gap-1.5">
-              <mat-icon class="text-blue-500 !text-base !w-4 !h-4">checklist</mat-icon>
-              {{ lang() === 'ar' ? 'ربط الصنف بمعرض الشراء' : 'Link Item to Showroom' }}
+              <mat-icon class="text-blue-500 !text-base !w-4 !h-4">add_location_alt</mat-icon>
+              {{ lang() === 'ar' ? 'ربط الصنف بموقع على الخريطة' : 'Link Item to Map Location' }}
             </h3>
 
             <div class="space-y-3">
               <div>
                 <label for="select-item" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  {{ lang() === 'ar' ? 'اختر الجهاز من القائمة:' : 'Select Appliance:' }}
+                  {{ lang() === 'ar' ? 'اختر الصنف من القائمة:' : 'Select Checklist Item:' }}
                 </label>
                 <select
                   id="select-item"
@@ -263,7 +295,7 @@ const APPLIANCE_STORES: ApplianceStore[] = [
                   <option value="">{{ lang() === 'ar' ? '-- اختر صنفاً --' : '-- Choose Item --' }}</option>
                   @for (item of items(); track item.id) {
                     <option [value]="item.id">
-                      {{ lang() === 'ar' ? item.titleAr : item.titleEn }} ({{ item.storeName || (lang() === 'ar' ? 'غير محدد' : 'Not set') }})
+                      {{ lang() === 'ar' ? item.titleAr : item.titleEn }} ({{ item.storeLocation || item.storeName || (lang() === 'ar' ? 'بدون موقع' : 'No location') }})
                     </option>
                   }
                 </select>
@@ -271,18 +303,18 @@ const APPLIANCE_STORES: ApplianceStore[] = [
 
               <div>
                 <label for="select-store" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  {{ lang() === 'ar' ? 'اختر المعرض المفضل:' : 'Select Preferred Store:' }}
+                  {{ lang() === 'ar' ? 'اختر الموقع / المتجر:' : 'Select Saved Location:' }}
                 </label>
                 <select
                   id="select-store"
-                  [value]="assignStoreId()"
-                  (change)="onSelectStore($event)"
+                  [value]="assignLocationId()"
+                  (change)="onSelectLocation($event)"
                   class="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
                 >
-                  <option value="">{{ lang() === 'ar' ? '-- اختر معرضاً --' : '-- Choose Store --' }}</option>
-                  @for (store of stores; track store.id) {
-                    <option [value]="store.id">
-                      {{ lang() === 'ar' ? store.nameAr : store.nameEn }}
+                  <option value="">{{ lang() === 'ar' ? '-- اختر موقعاً --' : '-- Choose Location --' }}</option>
+                  @for (loc of storage.mapLocations(); track loc.id) {
+                    <option [value]="loc.id">
+                      {{ lang() === 'ar' ? loc.nameAr : loc.nameEn }}
                     </option>
                   }
                 </select>
@@ -290,41 +322,60 @@ const APPLIANCE_STORES: ApplianceStore[] = [
 
               <button
                 type="button"
-                (click)="applyStoreToItem()"
-                [disabled]="!selectedItemId() || !assignStoreId()"
+                (click)="applyLocationToItem()"
+                [disabled]="!selectedItemId() || !assignLocationId()"
                 class="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
-                <mat-icon class="!text-sm !w-4 !h-4">add_location_alt</mat-icon>
-                {{ lang() === 'ar' ? 'تثبيت المعرض في تفاصيل الصنف' : 'Assign Store to Item' }}
+                <mat-icon class="!text-sm !w-4 !h-4">pin_drop</mat-icon>
+                {{ lang() === 'ar' ? 'حفظ الموقع في تفاصيل الصنف' : 'Assign Location to Item' }}
               </button>
             </div>
           </div>
 
-          <!-- Store Cards List -->
+          <!-- Saved Locations Cards List -->
           <div class="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-            @for (store of filteredStores(); track store.id) {
-              <button
-                type="button"
-                (click)="focusOnStore(store)"
-                class="w-full text-start p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer shadow-xs block"
+            @for (loc of filteredLocations(); track loc.id) {
+              <div
+                [class.border-blue-500]="activeLocation().id === loc.id"
+                [class.ring-2]="activeLocation().id === loc.id"
+                [class.ring-blue-500/20]="activeLocation().id === loc.id"
+                class="w-full text-start p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-xs"
               >
                 <div class="flex items-start justify-between gap-2">
-                  <h4 class="font-bold text-xs text-slate-800 dark:text-slate-200 leading-snug">
-                    {{ lang() === 'ar' ? store.nameAr : store.nameEn }}
-                  </h4>
-                  <span class="inline-flex items-center gap-0.5 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
-                    ★ {{ store.rating }}
-                  </span>
+                  <button
+                    type="button"
+                    (click)="focusOnLocation(loc)"
+                    class="font-bold text-xs text-slate-800 dark:text-slate-200 leading-snug text-start hover:text-blue-600 cursor-pointer flex-1"
+                  >
+                    {{ lang() === 'ar' ? loc.nameAr : loc.nameEn }}
+                  </button>
+                  <div class="flex items-center gap-1">
+                    <span class="inline-flex items-center gap-0.5 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
+                      ★ {{ loc.rating }}
+                    </span>
+                    @if (loc.category === 'custom') {
+                      <button
+                        type="button"
+                        (click)="storage.deleteMapLocation(loc.id)"
+                        class="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 p-0.5 rounded cursor-pointer"
+                        [title]="lang() === 'ar' ? 'حذف الموقع' : 'Delete Location'"
+                      >
+                        <mat-icon class="!text-xs !w-3.5 !h-3.5">delete_outline</mat-icon>
+                      </button>
+                    }
+                  </div>
                 </div>
 
                 <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                  {{ lang() === 'ar' ? store.addressAr : store.addressEn }}
+                  {{ lang() === 'ar' ? loc.addressAr : loc.addressEn }}
                 </p>
 
-                <div class="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-1.5 rounded-lg">
-                  🎁 {{ lang() === 'ar' ? store.specialDealsAr : store.specialDealsEn }}
-                </div>
-              </button>
+                @if (loc.specialDealsAr || loc.specialDealsEn) {
+                  <div class="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-1.5 rounded-lg">
+                    💡 {{ lang() === 'ar' ? loc.specialDealsAr : loc.specialDealsEn }}
+                  </div>
+                }
+              </div>
             }
           </div>
         </div>
@@ -332,61 +383,142 @@ const APPLIANCE_STORES: ApplianceStore[] = [
     </div>
   `
 })
-export class MapsView implements OnInit, OnDestroy {
+export class MapsView {
+  private readonly sanitizer = inject(DomSanitizer);
+  readonly storage = inject(StorageService);
+
   readonly items = input.required<ChecklistItem[]>();
   readonly lang = input<'ar' | 'en'>('ar');
   readonly itemUpdated = output<ChecklistItem>();
 
-  readonly stores = APPLIANCE_STORES;
-  readonly brands = ['B.Tech', 'Elaraby', 'Carrefour', 'Fresh', 'LG', 'Raneen'];
-  readonly selectedBrand = signal<string>('ALL');
+  readonly locationCategories = [
+    { id: 'appliances', labelAr: 'الأجهزة والإلكترونيات', labelEn: 'Appliances & Tech' },
+    { id: 'furniture', labelAr: 'الأثاث والمفروشات', labelEn: 'Furniture & Decor' },
+    { id: 'finishing', labelAr: 'التشطيبات والسيراميك', labelEn: 'Finishing & Materials' },
+    { id: 'shopping', labelAr: 'المراكز التجارية', labelEn: 'Shopping Centers' },
+    { id: 'custom', labelAr: 'مواقعي المخصصة', labelEn: 'My Custom Places' },
+  ];
 
-  readonly quotaExceeded = signal<boolean>(false);
-  readonly activeStore = signal<ApplianceStore | null>(null);
+  readonly selectedCategory = signal<string>('ALL');
+  readonly showAddLocationForm = signal<boolean>(false);
+  readonly customSearchQuery = signal<string>('');
+  readonly activeMapQuery = signal<string>('');
+
+  readonly selectedLocation = signal<MapLocation | null>(null);
+
+  readonly activeLocation = computed<MapLocation>(() => {
+    const sel = this.selectedLocation();
+    const all = this.storage.mapLocations();
+    if (sel && all.some(l => l.id === sel.id)) {
+      return sel;
+    }
+    return all[0];
+  });
 
   readonly selectedItemId = signal<string>('');
-  readonly assignStoreId = signal<string>('');
+  readonly assignLocationId = signal<string>('loc-1');
 
-  mapCenter: google.maps.LatLngLiteral = { lat: 30.0444, lng: 31.2357 }; // Cairo
-  mapZoom = 11;
-  mapOptions: google.maps.MapOptions = {
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: true,
-  };
+  readonly mapZoom = signal<number>(15);
 
-  private quotaListener = () => {
-    this.quotaExceeded.set(true);
-  };
+  newLocationForm = new FormGroup({
+    name: new FormControl('', [Validators.required]),
+    category: new FormControl('custom', [Validators.required]),
+    address: new FormControl('', [Validators.required]),
+    phone: new FormControl(''),
+    notes: new FormControl(''),
+  });
 
-  ngOnInit(): void {
-    if (typeof window !== 'undefined') {
-      window.addEventListener('gmp-quota-exceeded', this.quotaListener);
+  readonly safeMapUrl = computed<SafeResourceUrl>(() => {
+    const queryOverride = this.activeMapQuery();
+    const language = this.lang();
+    const zoom = this.mapZoom();
+
+    if (queryOverride) {
+      const url = `https://maps.google.com/maps?q=${encodeURIComponent(queryOverride)}&hl=${language}&z=${zoom}&output=embed`;
+      return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    }
+
+    const loc = this.activeLocation();
+    if (!loc) {
+      return this.sanitizer.bypassSecurityTrustResourceUrl(
+        `https://maps.google.com/maps?q=30.0444,31.2357&hl=${language}&z=12&output=embed`
+      );
+    }
+
+    if (loc.category === 'custom') {
+      const q = `${loc.nameAr} ${loc.addressAr}`;
+      const url = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&hl=${language}&z=${zoom}&output=embed`;
+      return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    }
+
+    const url = `https://maps.google.com/maps?q=${loc.position.lat},${loc.position.lng}&hl=${language}&z=${zoom}&output=embed`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  });
+
+  filteredLocations(): MapLocation[] {
+    const cat = this.selectedCategory();
+    const all = this.storage.mapLocations();
+    if (cat === 'ALL') {
+      return all;
+    }
+    return all.filter(s => s.category === cat);
+  }
+
+  selectCategory(cat: string): void {
+    this.selectedCategory.set(cat);
+    const list = this.filteredLocations();
+    if (list.length > 0) {
+      this.focusOnLocation(list[0]);
     }
   }
 
-  ngOnDestroy(): void {
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('gmp-quota-exceeded', this.quotaListener);
+  focusOnLocation(loc: MapLocation): void {
+    this.activeMapQuery.set('');
+    this.selectedLocation.set(loc);
+    this.assignLocationId.set(loc.id);
+    this.mapZoom.set(15);
+  }
+
+  onMapSearchInput(event: Event): void {
+    this.customSearchQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  searchOnMap(): void {
+    const q = this.customSearchQuery().trim();
+    if (q) {
+      this.activeMapQuery.set(q);
     }
   }
 
-  filteredStores(): ApplianceStore[] {
-    const brand = this.selectedBrand();
-    if (brand === 'ALL') {
-      return this.stores;
-    }
-    return this.stores.filter(s => s.brand === brand);
+  encodeQuery(q: string): string {
+    return encodeURIComponent(q);
   }
 
-  openInfoWindow(marker: MapMarker, store: ApplianceStore): void {
-    this.activeStore.set(store);
-  }
+  onAddLocation(): void {
+    if (this.newLocationForm.invalid) return;
+    const v = this.newLocationForm.value;
+    const name = (v.name || '').trim();
+    const address = (v.address || '').trim();
+    if (!name || !address) return;
 
-  focusOnStore(store: ApplianceStore): void {
-    this.mapCenter = store.position;
-    this.mapZoom = 14;
-    this.activeStore.set(store);
+    const created = this.storage.addMapLocation({
+      nameAr: name,
+      nameEn: name,
+      category: v.category || 'custom',
+      brand: 'Custom',
+      addressAr: address,
+      addressEn: address,
+      phone: (v.phone || '-').trim(),
+      rating: 5.0,
+      openHours: '09:00 AM - 10:00 PM',
+      specialDealsAr: (v.notes || '').trim(),
+      specialDealsEn: (v.notes || '').trim(),
+      position: { lat: 30.0444, lng: 31.2357 },
+    });
+
+    this.newLocationForm.reset({ category: 'custom' });
+    this.showAddLocationForm.set(false);
+    this.focusOnLocation(created);
   }
 
   onSelectItem(event: Event): void {
@@ -394,25 +526,31 @@ export class MapsView implements OnInit, OnDestroy {
     this.selectedItemId.set(val);
   }
 
-  onSelectStore(event: Event): void {
+  onSelectLocation(event: Event): void {
     const val = (event.target as HTMLSelectElement).value;
-    this.assignStoreId.set(val);
+    this.assignLocationId.set(val);
+    const loc = this.storage.mapLocations().find(s => s.id === val);
+    if (loc) {
+      this.focusOnLocation(loc);
+    }
   }
 
-  applyStoreToItem(): void {
+  applyLocationToItem(): void {
     const itemId = this.selectedItemId();
-    const storeId = this.assignStoreId();
-    if (!itemId || !storeId) return;
+    const locId = this.assignLocationId();
+    if (!itemId || !locId) return;
 
     const item = this.items().find(i => i.id === itemId);
-    const store = this.stores.find(s => s.id === storeId);
-    if (!item || !store) return;
+    const loc = this.storage.mapLocations().find(s => s.id === locId);
+    if (!item || !loc) return;
 
+    const locTitle = this.lang() === 'ar' ? loc.nameAr : loc.nameEn;
     const updated: ChecklistItem = {
       ...item,
-      storeName: this.lang() === 'ar' ? store.nameAr : store.nameEn,
-      myNotes: item.myNotes ? `${item.myNotes} [المعرض: ${store.nameAr}]` : `[المعرض المختار: ${store.nameAr} - ${store.addressAr}]`,
-      updatedAt: new Date().toISOString()
+      storeLocation: locTitle,
+      storeName: locTitle,
+      storeAddress: this.lang() === 'ar' ? loc.addressAr : loc.addressEn,
+      updatedAt: new Date().toISOString(),
     };
 
     this.itemUpdated.emit(updated);

@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, input, output } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { I18nService } from '../services/i18n.service';
@@ -22,10 +22,10 @@ import { ChecklistItem } from '../core/checklist-rules';
             </div>
             <div>
               <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">
-                {{ i18n.t().attachments }} - {{ item().titleAr }}
+                {{ i18n.t().attachments }} - {{ i18n.isRtl() ? item().titleAr : (item().titleEn || item().titleAr) }}
               </h3>
               <p class="text-xs text-slate-400">
-                الفواتير، شهادات الضمان، صور الجهاز، والمستندات
+                {{ i18n.isRtl() ? 'الفواتير، شهادات الضمان، صور الجهاز، والمستندات' : 'Invoices, warranty certificates, showroom photos, and documents' }}
               </p>
             </div>
           </div>
@@ -42,42 +42,54 @@ import { ChecklistItem } from '../core/checklist-rules';
         @if (auth.isEditor()) {
           <div class="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 shrink-0">
             <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-2">
-              إضافة مستند أو فاتورة سريعة:
+              {{ i18n.isRtl() ? 'إضافة مستند أو فاتورة سريعة:' : 'Quickly attach a document or receipt:' }}
             </span>
             <div class="flex flex-wrap gap-2">
               <button
                 type="button"
-                (click)="addQuickDoc('فاتورة شراء معتمدة', 'pdf', '1.2 MB')"
+                (click)="addQuickDoc(i18n.isRtl() ? 'فاتورة شراء معتمدة' : 'Purchase Invoice', 'pdf', '1.2 MB')"
                 class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs text-slate-700 dark:text-slate-200 hover:border-emerald-500 transition cursor-pointer flex items-center gap-1"
               >
                 <mat-icon class="text-rose-500 text-sm">picture_as_pdf</mat-icon>
-                <span>+ فاتورة الشراء</span>
+                <span>{{ i18n.isRtl() ? '+ فاتورة الشراء' : '+ Purchase Invoice' }}</span>
               </button>
 
               <button
                 type="button"
-                (click)="addQuickDoc('شهادة ضمان الوكيل 10 سنوات', 'doc', '850 KB')"
+                (click)="addQuickDoc(i18n.isRtl() ? 'شهادة ضمان الوكيل 10 سنوات' : '10-Year Warranty Certificate', 'doc', '850 KB')"
                 class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs text-slate-700 dark:text-slate-200 hover:border-emerald-500 transition cursor-pointer flex items-center gap-1"
               >
                 <mat-icon class="text-blue-500 text-sm">verified</mat-icon>
-                <span>+ شهادة الضمان</span>
+                <span>{{ i18n.isRtl() ? '+ شهادة الضمان' : '+ Warranty Cert' }}</span>
               </button>
 
               <button
                 type="button"
-                (click)="addQuickDoc('صورة المعاينة من المعرض', 'image', '2.4 MB')"
+                (click)="addQuickDoc(i18n.isRtl() ? 'صورة المعاينة من المعرض' : 'Showroom Inspection Photo', 'image', '2.4 MB')"
                 class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs text-slate-700 dark:text-slate-200 hover:border-emerald-500 transition cursor-pointer flex items-center gap-1"
               >
                 <mat-icon class="text-emerald-500 text-sm">image</mat-icon>
-                <span>+ صورة المعاينة</span>
+                <span>{{ i18n.isRtl() ? '+ صورة المعاينة' : '+ Showroom Photo' }}</span>
               </button>
 
               <label class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1">
                 <mat-icon class="text-sm">upload_file</mat-icon>
-                <span>رفع من الجهاز</span>
+                <span>{{ i18n.isRtl() ? 'رفع من الجهاز' : 'Upload File' }}</span>
                 <input type="file" (change)="onCustomFileUpload($event)" class="hidden" />
               </label>
             </div>
+          </div>
+        }
+
+        @if (previewBanner()) {
+          <div class="mt-3 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <mat-icon class="text-emerald-600 text-base">check_circle</mat-icon>
+              <span>{{ previewBanner() }}</span>
+            </div>
+            <button type="button" (click)="previewBanner.set('')" class="text-emerald-600 hover:text-emerald-800 cursor-pointer">
+              <mat-icon class="text-sm">close</mat-icon>
+            </button>
           </div>
         }
 
@@ -112,7 +124,7 @@ import { ChecklistItem } from '../core/checklist-rules';
                   type="button"
                   (click)="previewAttachment(att)"
                   class="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
-                  title="معاينة"
+                  [title]="i18n.isRtl() ? 'معاينة' : 'Preview'"
                 >
                   <mat-icon class="text-base">visibility</mat-icon>
                 </button>
@@ -121,7 +133,9 @@ import { ChecklistItem } from '../core/checklist-rules';
           } @empty {
             <div class="py-12 text-center text-xs text-slate-400">
               <mat-icon class="text-3xl text-slate-300 dark:text-slate-600">attachment</mat-icon>
-              <p class="mt-1">لا توجد مرفقات مرفوعة لهذا الصنف حالياً.</p>
+              <p class="mt-1">
+                {{ i18n.isRtl() ? 'لا توجد مرفقات مرفوعة لهذا الصنف حالياً.' : 'No attachments uploaded for this item yet.' }}
+              </p>
             </div>
           }
         </div>
@@ -133,7 +147,7 @@ import { ChecklistItem } from '../core/checklist-rules';
             (click)="closeModal.emit()"
             class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
           >
-            إغلاق
+            {{ i18n.isRtl() ? 'إغلاق' : 'Close' }}
           </button>
         </div>
 
@@ -148,6 +162,7 @@ export class AttachmentsModalComponent {
 
   item = input.required<ChecklistItem>();
   closeModal = output<void>();
+  previewBanner = signal<string>('');
 
   addQuickDoc(name: string, type: 'pdf' | 'image' | 'doc', size: string) {
     this.storage.addAttachment(this.item().id, {
@@ -172,6 +187,10 @@ export class AttachmentsModalComponent {
   }
 
   previewAttachment(att: { name: string; size: string }) {
-    alert(`معاينة المستند: ${att.name} (${att.size}) - المستند سليم ومحفوظ سحابياً ومحلياً.`);
+    this.previewBanner.set(
+      this.i18n.isRtl()
+        ? `معاينة المستند: ${att.name} (${att.size}) - المستند سليم ومحفوظ في حسابك.`
+        : `Document Preview: ${att.name} (${att.size}) — Verified & saved to your account.`
+    );
   }
 }

@@ -5,6 +5,9 @@ import {
   filterAndSortItems,
   generateCsvExport,
   createGoogleCalendarUrl,
+  generateSecureRandomPassword,
+  createEmptyUserWorkspace,
+  normalizeUiOptions,
   ChecklistItem
 } from './checklist-rules';
 
@@ -112,3 +115,39 @@ test('createGoogleCalendarUrl formats clean template URL', () => {
   assert.ok(url.includes('calendar.google.com'));
   assert.ok(url.includes('20261115'));
 });
+
+test('generateSecureRandomPassword generates unique strong random passwords instead of password123', () => {
+  const p1 = generateSecureRandomPassword(24);
+  const p2 = generateSecureRandomPassword(24);
+  assert.equal(p1.length, 24);
+  assert.equal(p2.length, 24);
+  assert.notEqual(p1, 'password123');
+  assert.notEqual(p1, p2);
+});
+
+test('createEmptyUserWorkspace resets all collections to empty arrays and sets Light Mode, Arabic, and empty Active Project', () => {
+  const empty = createEmptyUserWorkspace();
+  assert.deepEqual(empty.items, []);
+  assert.deepEqual(empty.categories, []);
+  assert.deepEqual(empty.projects, []);
+  assert.deepEqual(empty.notifications, []);
+  assert.deepEqual(empty.mapLocations, []);
+  assert.deepEqual(empty.aiChats, []);
+  assert.equal(empty.uiOptions.darkMode, false);
+  assert.equal(empty.uiOptions.language, 'ar');
+  assert.equal(empty.uiOptions.activeProjectId, '');
+});
+
+test('normalizeUiOptions normalizes partial or missing UI options safely', () => {
+  assert.deepEqual(normalizeUiOptions(null), {
+    darkMode: false,
+    language: 'ar',
+    activeProjectId: '',
+  });
+  assert.deepEqual(normalizeUiOptions({ darkMode: true, language: 'en', activeProjectId: 'proj-1' }), {
+    darkMode: true,
+    language: 'en',
+    activeProjectId: 'proj-1',
+  });
+});
+
