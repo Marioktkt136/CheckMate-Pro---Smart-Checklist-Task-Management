@@ -2,13 +2,12 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import {
   UserRole,
   UserUiOptions,
-  generateSecureRandomPassword,
   createEmptyUserWorkspace,
   normalizeUiOptions,
 } from '../core/checklist-rules';
 import { FirebaseService, CloudUserRecord } from './firebase.service';
 
-export type AuthProviderType = 'email' | 'google';
+export type AuthProviderType = 'email';
 
 export interface UserProfile extends CloudUserRecord {
   id: string;
@@ -44,7 +43,7 @@ export const DEMO_USERS: UserProfile[] = [];
 
 // Default session timeout: 60 minutes
 export const SESSION_DURATION_MS = 60 * 60 * 1000;
-const CLEAN_RESET_VERSION_KEY = 'checkmate_clean_reset_v4';
+const CLEAN_RESET_VERSION_KEY = 'checkmate_clean_reset_v5';
 
 @Injectable({
   providedIn: 'root',
@@ -70,18 +69,6 @@ export class AuthService {
       (this.currentUser().role === 'editor' || this.currentUser().role === 'admin')
   );
   isViewer = computed(() => !this.isAuthenticated() || this.currentUser().role === 'viewer');
-
-  /**
-   * Registered Google accounts in the database (shown in "Choose a Google Account to Continue")
-   */
-  googleAccounts = computed(() =>
-    this.users().filter(
-      u =>
-        u.id &&
-        u.email &&
-        (u.provider === 'google' || u.email.toLowerCase().endsWith('@gmail.com'))
-    )
-  );
 
   private sessionTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -153,7 +140,7 @@ export class AuthService {
     this.sessionRemainingMinutes.set(0);
     this.showAuthModal.set(true);
 
-    // Sync users list from Firestore database so the Google Account Chooser & Auth checks are up-to-date
+    // Sync users list from Firestore database so Auth checks are up-to-date
     void this.syncUsersFromDatabase();
   }
 
@@ -165,14 +152,7 @@ export class AuthService {
         const existing = this.users().find(
           x => x.id === u.id || x.email.toLowerCase() === u.email.toLowerCase()
         );
-        const isGoogle = u.provider === 'google' || existing?.provider === 'google';
-        const rawPass = u.password || existing?.password;
-        const resolvedPassword =
-          rawPass && (!isGoogle || rawPass !== 'password123')
-            ? rawPass
-            : isGoogle
-              ? generateSecureRandomPassword(24)
-              : 'password123';
+        const resolvedPassword = u.password || existing?.password || '';
 
         const existingIsNewer = Boolean(
           existing?.updatedAt && u.updatedAt && existing.updatedAt > u.updatedAt
@@ -202,9 +182,9 @@ export class AuthService {
           email: u.email,
           password: resolvedPassword,
           role: (u.role as UserRole) || existing?.role || 'editor',
-          avatar: u.avatar || existing?.avatar || (isGoogle ? '🌐' : '👤'),
+          avatar: u.avatar || existing?.avatar || '👤',
           department: u.department || existing?.department || 'فريق العمل',
-          provider: isGoogle ? 'google' : 'email',
+          provider: 'email',
         };
       });
 
@@ -428,7 +408,7 @@ export class AuthService {
       role: data.role || 'admin',
       department: data.department?.trim() || 'فريق العمل والمشاريع',
       avatar: data.avatar || '👨‍💼',
-      provider: data.provider || 'email',
+      provider: 'email',
       ...emptyWorkspace,
     };
 
@@ -464,126 +444,6 @@ export class AuthService {
       await this.firebase.saveUserToFirestore(res.user);
     }
     return res;
-  }
-
-  /**
-   * Completes Google Sign-In or Sign-Up via the "Choose a Google Account to Continue" flow:
-   * - When mode === 'signin': checks Firestore database first; if found, signs in; if not found, returns 'account_not_found'.
-   * - When mode === 'create': checks Firestore database first; if already exists, returns 'user_already_exists';
-   *   otherwise creates new Google user with random 24-character password and empty workspace.
-   */
-  async signInWithGoogleEmail(
-    emailOrIdentifier: string,
-    displayName?: string,
-    mode: 'signin' | 'create' = 'signin'
-  ): Promise<{
-    success: boolean;
-    errorCode?: 'account_not_found' | 'user_already_exists' | 'no_user';
-    user?: UserProfile;
-    isNewUser?: boolean;
-  }> {
-    const raw = (emailOrIdentifier || '').trim().toLowerCase().replace(/^@/, '');
-    if (!raw) {
-      return { success: false, errorCode: 'no_user' };
-    }
-
-    const normalizedEmail = raw.includes('@') ? raw : `${raw}@gmail.com`;
-
-    await this.syncUsersFromDatabase();
-    const existing =
-      this.findAccountInDatabase(raw) || this.findAccountInDatabase(normalizedEmail);
-
-    if (mode === 'signin') {
-      if (!existing) {
-        return {
-          success: false,
-          errorCode: 'account_not_found',
-        };
-      }
-      const user = this.completeGoogleSignIn(
-        existing.email,
-        displayName || existing.name,
-        existing.role || 'admin',
-        false
-      );
-      if (!user) {
-        return { success: false, errorCode: 'account_not_found' };
-      }
-      return { success: true, user, isNewUser: false };
-    }
-
-    // mode === 'create'
-    if (existing) {
-      return {
-        success: false,
-        errorCode: 'user_already_exists',
-      };
-    }
-
-    const targetName = (displayName || normalizedEmail.split('@')[0] || 'Google User').trim();
-    const user = this.completeGoogleSignIn(normalizedEmail, targetName, 'admin', true);
-    if (!user) {
-      return { success: false, errorCode: 'no_user' };
-    }
-    await this.firebase.saveUserToFirestore(user);
-    return { success: true, user, isNewUser: true };
-  }
-
-  /**
-   * Signs in an existing Google user from the database, or creates a new one when allowCreate is true.
-   * When creating a new Google user:
-   * - Sets a cryptographically strong random password instead of 'password123'
-   * - Resets all user workspace data to empty arrays [] and UI options to Light Mode, Arabic, and Active Project ""
-   */
-  completeGoogleSignIn(
-    email: string,
-    displayName?: string,
-    role: UserRole = 'admin',
-    allowCreate = true
-  ): UserProfile | null {
-    const cleanEmail = email.trim().toLowerCase();
-    const existing = this.findAccountInDatabase(cleanEmail);
-
-    if (existing) {
-      this.currentUser.set(existing);
-      this.issueSession(existing);
-      this.showAuthModal.set(false);
-      return existing;
-    }
-
-    if (!allowCreate) {
-      return null;
-    }
-
-    const fallbackName = (displayName || cleanEmail.split('@')[0] || 'User').trim();
-    const username =
-      cleanEmail.split('@')[0].replace(/[^a-z0-9_.-]/g, '') || 'user_' + Date.now();
-    const emptyWorkspace = createEmptyUserWorkspace();
-    const randomPassword = generateSecureRandomPassword(24);
-
-    const newUser: UserProfile = {
-      id: 'u_' + Date.now(),
-      name: fallbackName,
-      nameEn: fallbackName,
-      username,
-      email: cleanEmail,
-      password: randomPassword,
-      role,
-      department: 'Google Account',
-      avatar: '🌐',
-      provider: 'google',
-      ...emptyWorkspace,
-    };
-
-    this.removeDeletedUserId(newUser.id);
-    const updatedList = [...this.users(), newUser];
-    this.persistUsers(updatedList);
-    void this.firebase.saveUserToFirestore(newUser);
-
-    this.currentUser.set(newUser);
-    this.issueSession(newUser);
-    this.showAuthModal.set(false);
-    return newUser;
   }
 
   updateUserUiOptions(userId: string, uiOptions: UserUiOptions) {
@@ -655,8 +515,6 @@ export class AuthService {
       localStorage.removeItem('checkmate_user_id');
       localStorage.setItem('checkmate_signed_out', 'true');
     }
-
-    void this.firebase.signOut();
 
     if (isTimeout) {
       this.sessionExpiredNotice.set('sessionExpired');

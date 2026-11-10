@@ -94,7 +94,6 @@ export interface Translations {
   orEnterCredentials: string;
   invalidCredentials: string;
   accountNotFoundError: string;
-  googleAccountNotFoundError: string;
   userAlreadyExists: string;
   registrationSuccess: string;
   selectRole: string;
@@ -134,9 +133,6 @@ export interface Translations {
   byStatus: string;
   allCount: string;
   itemsUnit: string;
-  continueWithGoogle: string;
-  continueWithFacebook: string;
-  continueWithApple: string;
   orWithEmailPassword: string;
   signedOutBanner: string;
   enterEmail: string;
@@ -246,7 +242,6 @@ const AR_TRANSLATIONS: Translations = {
   orEnterCredentials: 'أو أدخل بيانات حسابك',
   invalidCredentials: 'اسم المستخدم أو كلمة المرور غير صحيحة',
   accountNotFoundError: 'خطأ: هذا الحساب غير موجود في قاعدة البيانات! يرجى إنشاء حساب جديد (Sign Up) أولاً.',
-  googleAccountNotFoundError: 'خطأ: لا يوجد حساب مسجل بهذا البريد في قاعدة البيانات! يرجى الانتقال إلى تبويب "إنشاء حساب جديد" أولاً.',
   userAlreadyExists: 'اسم المستخدم أو البريد الإلكتروني مسجل مسبقاً في قاعدة البيانات',
   registrationSuccess: 'تم إنشاء الحساب بنجاح وتم تسجيل دخولك',
   selectRole: 'تحديد الصلاحية',
@@ -286,9 +281,6 @@ const AR_TRANSLATIONS: Translations = {
   byStatus: 'الحالة',
   allCount: 'صنف',
   itemsUnit: 'صنف',
-  continueWithGoogle: 'المتابعة باستخدام Google',
-  continueWithFacebook: 'المتابعة باستخدام Facebook',
-  continueWithApple: 'المتابعة باستخدام Apple',
   orWithEmailPassword: 'أو يدويًا عبر البريد الإلكتروني وكلمة المرور',
   signedOutBanner: 'تم تسجيل الخروج. يرجى تسجيل الدخول أو إنشاء حساب للمتابعة.',
   enterEmail: 'أدخل البريد الإلكتروني',
@@ -398,7 +390,6 @@ const EN_TRANSLATIONS: Translations = {
   orEnterCredentials: 'Or enter your credentials',
   invalidCredentials: 'Invalid username/email or password',
   accountNotFoundError: 'Error: No account found in the database with these credentials! Please Sign Up first.',
-  googleAccountNotFoundError: 'Error: No account found in the database for this Google email! Please switch to Sign Up to create an account first.',
   userAlreadyExists: 'An account with this username or email already exists in the database',
   registrationSuccess: 'Account created successfully and signed in',
   selectRole: 'Select Role',
@@ -438,9 +429,6 @@ const EN_TRANSLATIONS: Translations = {
   byStatus: 'Status',
   allCount: 'items',
   itemsUnit: 'items',
-  continueWithGoogle: 'Continue with Google',
-  continueWithFacebook: 'Continue with Facebook',
-  continueWithApple: 'Continue with Apple',
   orWithEmailPassword: 'Or manually with Email and Password',
   signedOutBanner: 'You are signed out. Please sign in or sign up to continue.',
   enterEmail: 'Enter your email address',

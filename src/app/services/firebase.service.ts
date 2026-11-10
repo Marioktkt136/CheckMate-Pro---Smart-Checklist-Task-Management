@@ -1,14 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signOut,
-  User
-} from 'firebase/auth';
-import {
   getFirestore,
   collection,
   doc,
@@ -16,7 +8,8 @@ import {
   setDoc,
   deleteDoc,
   onSnapshot,
-  getDocs
+  getDocs,
+  getDocFromServer,
 } from 'firebase/firestore';
 import firebaseConfig from '../../../firebase-applet-config.json';
 import { ChecklistItem, ProjectFolder, MapLocation, UserUiOptions } from '../core/checklist-rules';
@@ -42,7 +35,7 @@ export interface CloudUserRecord extends CloudUserWorkspace {
   role: string;
   avatar?: string;
   department?: string;
-  provider?: 'email' | 'google';
+  provider?: 'email';
 }
 
 function cleanFirestoreData<T>(obj: T): T {
@@ -50,120 +43,38 @@ function cleanFirestoreData<T>(obj: T): T {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class FirebaseService {
   private readonly app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  readonly auth = getAuth(this.app);
   private readonly firestoreDbId =
     (firebaseConfig as Record<string, string>)['firestoreDatabaseId'] ||
     'ai-studio-checkmateprosmar-13750c5e-07b2-4f6e-9764-100644db56e9';
   readonly db = getFirestore(this.app, this.firestoreDbId);
 
-  // Auth State
-  readonly currentUser = signal<User | null>(null);
-  readonly userToken = signal<string | null>(null);
-  readonly isAuthenticating = signal<boolean>(false);
   readonly isConnectedToFirestore = signal<boolean>(true);
-
-  private readonly googleProvider = new GoogleAuthProvider();
   private lastSavedHashByUser = new Map<string, string>();
 
-  constructor() {
-    this.googleProvider.addScope('profile');
-    this.googleProvider.addScope('email');
-    this.googleProvider.setCustomParameters({
-      prompt: 'select_account'
-    });
-
-    if (typeof window !== 'undefined') {
-      onAuthStateChanged(this.auth, (user) => {
-        this.currentUser.set(user);
-        if (!user) {
-          this.userToken.set(null);
-        }
-      });
-    }
-  }
-
-  readonly googleAuthEmail = signal<string | null>(null);
-  readonly googleAuthDisplayName = signal<string | null>(null);
-
-  async signInWithGoogle(): Promise<string | null> {
-    this.isAuthenticating.set(true);
-    try {
-      const result = await signInWithPopup(this.auth, this.googleProvider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential?.accessToken || null;
-      if (token) {
-        this.userToken.set(token);
-      }
-      this.currentUser.set(result.user);
-
-      // Extract email and displayName from User, providerData, _tokenResponse, or idToken JWT
-      const tokenResp = (result as { _tokenResponse?: { email?: string; fullName?: string; displayName?: string } })._tokenResponse;
-      let resolvedEmail =
-        result.user?.email ||
-        result.user?.providerData?.find(p => p?.email)?.email ||
-        tokenResp?.email ||
-        null;
-      let resolvedName =
-        result.user?.displayName ||
-        result.user?.providerData?.find(p => p?.displayName)?.displayName ||
-        tokenResp?.fullName ||
-        tokenResp?.displayName ||
-        null;
-
-      if ((!resolvedEmail || !resolvedName) && credential?.idToken) {
-        try {
-          const parts = credential.idToken.split('.');
-          if (parts.length >= 2) {
-            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-            if (!resolvedEmail && payload.email) resolvedEmail = String(payload.email);
-            if (!resolvedName && payload.name) resolvedName = String(payload.name);
-          }
-        } catch {
-          // Ignore JWT decode fallback error
-        }
-      }
-
-      this.googleAuthEmail.set(resolvedEmail);
-      this.googleAuthDisplayName.set(resolvedName);
-      return token;
-    } catch (err) {
-      console.warn('Google Sign-In popup note:', err);
-      throw err;
-    } finally {
-      this.isAuthenticating.set(false);
-    }
-  }
-
-  async signInWithEmail(email: string, pass: string): Promise<User | null> {
-    if (!email || !pass) return null;
-    return null;
-  }
-
-  async createWithEmail(email: string, pass: string): Promise<User | null> {
-    if (!email || !pass) return null;
-    return null;
-  }
-
-  async signOut(): Promise<void> {
-    try {
-      await signOut(this.auth);
-    } catch {
-      // Ignore if not signed into Firebase Auth
-    }
-    this.currentUser.set(null);
-    this.userToken.set(null);
-  }
-
-  getAccessToken(): string | null {
-    return this.userToken();
-  }
-
-  readonly projectId = (firebaseConfig as Record<string, string>)['projectId'] || 'gen-lang-client-0495942485';
+  readonly projectId =
+    (firebaseConfig as Record<string, string>)['projectId'] || 'gen-lang-client-0495942485';
   readonly databaseId = this.firestoreDbId;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      void this.testConnection();
+    }
+  }
+
+  private async testConnection(): Promise<void> {
+    try {
+      await getDocFromServer(doc(this.db, 'test', 'connection'));
+      this.isConnectedToFirestore.set(true);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('the client is offline')) {
+        console.error('Please check your Firebase configuration.');
+      }
+    }
+  }
 
   /**
    * Fetch all users from Firestore database to verify account existence on Sign-In

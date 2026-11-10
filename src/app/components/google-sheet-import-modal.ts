@@ -5,7 +5,6 @@ import { I18nService } from '../services/i18n.service';
 import { WorkspaceService, SheetColumnSchema, ParsedSheetResult } from '../services/workspace.service';
 import { StorageService } from '../services/storage.service';
 import { AuthService } from '../services/auth.service';
-import { FirebaseService } from '../services/firebase.service';
 
 @Component({
   selector: 'app-google-sheet-import-modal',
@@ -345,7 +344,6 @@ export class GoogleSheetImportModalComponent {
   workspace = inject(WorkspaceService);
   storage = inject(StorageService);
   auth = inject(AuthService);
-  firebase = inject(FirebaseService);
 
   closeModal = output<void>();
 
@@ -419,8 +417,7 @@ export class GoogleSheetImportModalComponent {
     if (!url) return;
     this.isFetching.set(true);
     try {
-      const token = this.firebase.getAccessToken() || undefined;
-      const res = await this.workspace.fetchFromGoogleSheetsApi(url, token, this.selectedProjectId());
+      const res = await this.workspace.fetchFromGoogleSheetsApi(url, undefined, this.selectedProjectId());
       this.parsedResult.set(res);
       if (!res.success) {
         this.importSuccessMessage.set(res.message);
