@@ -169,28 +169,10 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
               <span>{{ errorMessage() }}</span>
             </div>
 
-            <!-- Helpful recovery actions when password is wrong or account not found -->
-            @if (matchedWrongPassUser()) {
-              <div class="flex items-center justify-between gap-2 pt-1 border-t border-rose-200/60 dark:border-rose-800/60">
-                <span class="text-[11px] text-rose-700 dark:text-rose-300">
-                  {{ i18n.isRtl()
-                    ? 'هل نسيت كلمة المرور لحساب (' + matchedWrongPassUser()!.username + ')؟'
-                    : 'Forgot password for (@' + matchedWrongPassUser()!.username + ')?' }}
-                </span>
-                <button
-                  type="button"
-                  (click)="onResetPasswordAndSignIn()"
-                  class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] cursor-pointer transition shrink-0"
-                >
-                  {{ i18n.isRtl() ? 'اعتماد كلمة المرور هذه والدخول' : 'Set This Password & Sign In' }}
-                </button>
-              </div>
-            }
-
             @if (showNotFoundSignUpHint()) {
               <div class="flex items-center justify-between gap-2 pt-1 border-t border-rose-200/60 dark:border-rose-800/60">
                 <span class="text-[11px] text-rose-700 dark:text-rose-300">
-                  {{ i18n.isRtl() ? 'هذا الحساب غير مسجل بعد.' : 'This account is not registered yet.' }}
+                  {{ i18n.isRtl() ? 'هذا الحساب غير مسجل بعد في قاعدة البيانات.' : 'This account is not registered in the database yet.' }}
                 </span>
                 <button
                   type="button"
@@ -204,7 +186,7 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
           </div>
         }
 
-        <!-- Google Authentication Button (Shown on both Sign In & Sign Up tabs) -->
+        <!-- Google Authentication Button & Account Chooser (Shown on Sign In & Sign Up tabs) -->
         @if (currentTab() === 'signin' || currentTab() === 'create') {
           <div class="mt-4 space-y-2.5">
             <button
@@ -232,9 +214,7 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
                       <path fill="#4285F4" d="M21.1 12.2c0-.6-.1-1.1-.2-1.6H12v3.9h5.5c-.3 1.4-1.1 2.5-2.1 3.2l2.9 2.4c1.7-1.6 2.8-4 2.8-7.9z"/>
                     </svg>
                     <span>
-                      {{ currentTab() === 'create'
-                        ? (i18n.isRtl() ? 'التسجيل باستخدام حساب Google' : 'Sign Up with Google Account')
-                        : (i18n.isRtl() ? 'اختر حساب Google للمتابعة' : 'Choose a Google Account to Continue') }}
+                      {{ i18n.isRtl() ? 'اختر حساب Google للمتابعة' : 'Choose a Google Account to Continue' }}
                     </span>
                   </div>
                   <button
@@ -246,13 +226,13 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
                   </button>
                 </div>
 
-                @if (currentTab() === 'signin' && auth.users().length > 0) {
+                @if (currentTab() === 'signin' && auth.googleAccounts().length > 0) {
                   <div class="space-y-1.5">
-                    @for (acc of auth.users(); track acc.id) {
+                    @for (acc of auth.googleAccounts(); track acc.id) {
                       <button
                         type="button"
                         (click)="onSelectGoogleAccount(acc)"
-                        class="w-full p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 flex items-center justify-between gap-2 text-start transition cursor-pointer"
+                        class="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 flex items-center justify-between gap-2 text-start transition cursor-pointer"
                       >
                         <div class="flex items-center gap-2.5 min-w-0">
                           <span class="text-base shrink-0">{{ acc.avatar }}</span>
@@ -265,7 +245,7 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
                             </div>
                           </div>
                         </div>
-                        <mat-icon class="!text-sm !w-4 !h-4 text-blue-600 shrink-0">arrow_forward</mat-icon>
+                        <mat-icon class="!text-sm !w-4 !h-4 text-slate-400 shrink-0">arrow_forward</mat-icon>
                       </button>
                     }
                   </div>
@@ -276,20 +256,20 @@ const AVATARS = ['👨‍💼', '👩‍💼', '👑', '✨', '🛠️', '📊',
                     type="email"
                     [formControl]="googleEmailControl"
                     [placeholder]="i18n.isRtl() ? 'أدخل بريد Google (مثال: name@gmail.com)' : 'Enter Google email (e.g. name@gmail.com)'"
-                    class="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   @if (currentTab() === 'create') {
                     <input
                       type="text"
                       [formControl]="googleNameControl"
                       [placeholder]="i18n.isRtl() ? 'الاسم الكامل (اختياري)' : 'Full Name (optional)'"
-                      class="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      class="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   }
                   <button
                     type="button"
                     (click)="onSubmitGoogleChooserEmail()"
-                    class="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+                    class="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <mat-icon class="!text-sm !w-4 !h-4">login</mat-icon>
                     <span>{{ i18n.t().continueWithGoogle }}</span>
@@ -624,7 +604,6 @@ export class AuthModalComponent {
   showSignInPassword = signal<boolean>(false);
   showSignUpPassword = signal<boolean>(false);
 
-  matchedWrongPassUser = signal<UserProfile | null>(null);
   showNotFoundSignUpHint = signal<boolean>(false);
   showGoogleChooser = signal<boolean>(false);
 
@@ -639,7 +618,7 @@ export class AuthModalComponent {
   createUserForm = new FormGroup({
     name: new FormControl('', [Validators.required, Validators.minLength(2)]),
     username: new FormControl('', [Validators.required, Validators.minLength(2)]),
-    email: new FormControl('', [Validators.required]),
+    email: new FormControl('', [Validators.required, Validators.email]),
     password: new FormControl('', [Validators.required, Validators.minLength(4)]),
     role: new FormControl<UserRole>('editor', [Validators.required]),
   });
@@ -648,7 +627,6 @@ export class AuthModalComponent {
     this.currentTab.set(tab);
     this.feedbackMessage.set('');
     this.errorMessage.set('');
-    this.matchedWrongPassUser.set(null);
     this.showNotFoundSignUpHint.set(false);
     this.showGoogleChooser.set(false);
   }
@@ -667,47 +645,13 @@ export class AuthModalComponent {
   async onGoogleAuth() {
     this.errorMessage.set('');
     this.feedbackMessage.set('');
-    this.matchedWrongPassUser.set(null);
     this.showNotFoundSignUpHint.set(false);
 
     if (this.auth.isAuthenticated()) {
       this.storage.flushPendingSync();
     }
 
-    const mode = this.currentTab() === 'create' ? 'create' : 'signin';
-
-    // 1. If the user already typed an email/username in the active form, use it directly
-    const typedIdentifier =
-      mode === 'signin'
-        ? (this.signInForm.value.identifier || '').trim()
-        : (this.createUserForm.value.email || this.createUserForm.value.username || '').trim();
-    const typedName = mode === 'create' ? (this.createUserForm.value.name || '').trim() : '';
-
-    if (typedIdentifier) {
-      await this.completeGoogleAuthWithEmail(typedIdentifier, typedName, mode);
-      return;
-    }
-
-    // 2. Try Firebase Google Popup
-    const result = await this.auth.signInWithGoogleProvider(mode);
-    if (result.success && result.user) {
-      if (result.isNewUser) {
-        this.storage.resetWorkspaceForNewUser(result.user.id);
-      } else {
-        await this.storage.loadUserWorkspace(result.user.id);
-      }
-      this.showGoogleChooser.set(false);
-      this.closeModal.emit();
-      return;
-    }
-
-    if (result.errorCode === 'account_not_found') {
-      this.showNotFoundSignUpHint.set(true);
-      this.errorMessage.set(this.i18n.t().googleAccountNotFoundError);
-      return;
-    }
-
-    // 3. When popup is blocked or closed in the iframe environment, open the in-modal Google Account Chooser
+    // Sync existing users from Firestore and open the "Choose a Google Account to Continue" panel
     await this.auth.syncUsersFromDatabase();
     this.showGoogleChooser.set(true);
   }
@@ -725,11 +669,11 @@ export class AuthModalComponent {
   async onSubmitGoogleChooserEmail() {
     const emailVal = (this.googleEmailControl.value || '').trim();
     const nameVal = (this.googleNameControl.value || '').trim();
-    if (!emailVal) {
+    if (!emailVal || !emailVal.includes('@')) {
       this.errorMessage.set(
         this.i18n.isRtl()
-          ? 'يرجى إدخال البريد الإلكتروني لحساب Google.'
-          : 'Please enter your Google email address.'
+          ? 'يرجى إدخال بريد Google إلكتروني صحيح (مثال: name@gmail.com).'
+          : 'Please enter a valid Google email address (e.g. name@gmail.com).'
       );
       return;
     }
@@ -760,6 +704,11 @@ export class AuthModalComponent {
       this.signInForm.patchValue({ identifier: emailOrId });
       this.showNotFoundSignUpHint.set(true);
       this.errorMessage.set(this.i18n.t().googleAccountNotFoundError);
+      return;
+    }
+
+    if (res.errorCode === 'user_already_exists') {
+      this.errorMessage.set(this.i18n.t().userAlreadyExists);
     }
   }
 
@@ -767,7 +716,6 @@ export class AuthModalComponent {
     if (this.signInForm.invalid) return;
     this.errorMessage.set('');
     this.feedbackMessage.set('');
-    this.matchedWrongPassUser.set(null);
     this.showNotFoundSignUpHint.set(false);
 
     if (this.auth.isAuthenticated()) {
@@ -777,8 +725,7 @@ export class AuthModalComponent {
     const { identifier, password } = this.signInForm.value;
     const res = await this.auth.signInCheckingDatabase(identifier || '', password || '');
     if (!res.success) {
-      if (res.reason === 'wrong_password' && res.matchedUser) {
-        this.matchedWrongPassUser.set(res.matchedUser);
+      if (res.reason === 'wrong_password') {
         this.errorMessage.set(
           this.i18n.isRtl()
             ? 'كلمة المرور غير صحيحة لهذا الحساب المسجل في قاعدة البيانات.'
@@ -797,36 +744,9 @@ export class AuthModalComponent {
     this.closeModal.emit();
   }
 
-  onResetPasswordAndSignIn() {
-    const user = this.matchedWrongPassUser();
-    const newPass = (this.signInForm.value.password || '').trim();
-    if (!user || !newPass) return;
-
-    if (newPass.length < 4) {
-      this.errorMessage.set(
-        this.i18n.isRtl()
-          ? 'يرجى إدخال كلمة مرور لا تقل عن 4 أحرف.'
-          : 'Please enter a password of at least 4 characters.'
-      );
-      return;
-    }
-
-    if (this.auth.isAuthenticated()) {
-      this.storage.flushPendingSync();
-    }
-
-    const ok = this.auth.resetPassword(user.id, newPass);
-    if (ok) {
-      this.matchedWrongPassUser.set(null);
-      this.errorMessage.set('');
-      this.storage.dataScope.set('mine');
-      void this.storage.loadUserWorkspace(user.id);
-      this.closeModal.emit();
-    }
-  }
-
   prefillSignUpFromSignIn() {
-    const idVal = (this.signInForm.value.identifier || '').trim();
+    const googleEmailVal = (this.googleEmailControl.value || '').trim();
+    const idVal = googleEmailVal || (this.signInForm.value.identifier || '').trim();
     const passVal = (this.signInForm.value.password || '').trim();
     this.switchTab('create');
 
@@ -838,11 +758,12 @@ export class AuthModalComponent {
         name: prefix,
         password: passVal,
       });
+      this.googleEmailControl.setValue(idVal);
     } else if (idVal) {
       this.createUserForm.patchValue({
         username: idVal,
         name: idVal,
-        email: `${idVal}@checkmate.local`,
+        email: '',
         password: passVal,
       });
     }
@@ -861,8 +782,8 @@ export class AuthModalComponent {
   onSignOut() {
     this.storage.flushPendingSync();
     this.auth.logout(false);
+    this.storage.clearInMemoryWorkspace();
     this.currentTab.set('signin');
-    this.matchedWrongPassUser.set(null);
     this.showNotFoundSignUpHint.set(false);
     this.signInForm.reset({ identifier: '', password: '' });
     this.errorMessage.set('');
@@ -902,7 +823,7 @@ export class AuthModalComponent {
     }, 3500);
   }
 
-  onCreateUser() {
+  async onCreateUser() {
     if (this.createUserForm.invalid) return;
     this.errorMessage.set('');
     this.feedbackMessage.set('');
@@ -912,7 +833,7 @@ export class AuthModalComponent {
     }
 
     const v = this.createUserForm.value;
-    const res = this.auth.signUp({
+    const res = await this.auth.signUpCheckingDatabase({
       name: v.name || '',
       nameEn: v.name || '',
       username: v.username || '',
