@@ -2,6 +2,31 @@ export type ItemStatus = 'pending' | 'comparing' | 'purchased' | 'delivered';
 export type ItemPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type UserRole = 'admin' | 'editor' | 'viewer';
 
+export type AttachmentTag = 'invoice' | 'warranty' | 'photo' | 'manual' | 'other';
+
+export interface ItemAttachment {
+  id: string;
+  name: string;
+  size: string;
+  type: 'pdf' | 'image' | 'doc';
+  url?: string;
+  date: string;
+  caption?: string;
+  tag?: AttachmentTag;
+  isPrimary?: boolean;
+  mimeType?: string;
+}
+
+export interface ItemComment {
+  id: string;
+  userName: string;
+  text: string;
+  timestamp: string;
+  avatar?: string;
+  pinned?: boolean;
+  edited?: boolean;
+}
+
 export interface ChecklistItem {
   id: string;
   itemNumber: number;
@@ -27,21 +52,8 @@ export interface ChecklistItem {
     email: string;
     role: UserRole;
   };
-  attachments?: {
-    id: string;
-    name: string;
-    size: string;
-    type: 'pdf' | 'image' | 'doc';
-    url?: string;
-    date: string;
-  }[];
-  comments?: {
-    id: string;
-    userName: string;
-    text: string;
-    timestamp: string;
-    avatar?: string;
-  }[];
+  attachments?: ItemAttachment[];
+  comments?: ItemComment[];
   reminderSet?: boolean;
   reminderDate?: string;
   ownerId?: string;

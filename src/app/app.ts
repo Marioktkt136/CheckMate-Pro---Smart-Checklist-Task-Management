@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { NavbarComponent } from './components/navbar';
@@ -55,18 +55,38 @@ export class App {
 
   activeTab = signal<ActiveTab>('checklist');
 
-  // Modals state
+  // Modals state with live reactive item lookup from storage.items()
   showItemModal = signal<boolean>(false);
-  editingItem = signal<ChecklistItem | null>(null);
+  editingItemId = signal<string | null>(null);
+  editingItem = computed<ChecklistItem | null>(() => {
+    const id = this.editingItemId();
+    if (!id) return null;
+    return this.storage.items().find(i => i.id === id) || null;
+  });
 
   showAiAdvisorModal = signal<boolean>(false);
-  consultingItem = signal<ChecklistItem | null>(null);
+  consultingItemId = signal<string | null>(null);
+  consultingItem = computed<ChecklistItem | null>(() => {
+    const id = this.consultingItemId();
+    if (!id) return null;
+    return this.storage.items().find(i => i.id === id) || null;
+  });
 
   showCommentsModal = signal<boolean>(false);
-  activeCommentsItem = signal<ChecklistItem | null>(null);
+  activeCommentsItemId = signal<string | null>(null);
+  activeCommentsItem = computed<ChecklistItem | null>(() => {
+    const id = this.activeCommentsItemId();
+    if (!id) return null;
+    return this.storage.items().find(i => i.id === id) || null;
+  });
 
   showAttachmentsModal = signal<boolean>(false);
-  activeAttachmentsItem = signal<ChecklistItem | null>(null);
+  activeAttachmentsItemId = signal<string | null>(null);
+  activeAttachmentsItem = computed<ChecklistItem | null>(() => {
+    const id = this.activeAttachmentsItemId();
+    if (!id) return null;
+    return this.storage.items().find(i => i.id === id) || null;
+  });
 
   showProjectModal = signal<boolean>(false);
   showAuthModal = signal<boolean>(false);
@@ -86,27 +106,27 @@ export class App {
   }
 
   openAddItem() {
-    this.editingItem.set(null);
+    this.editingItemId.set(null);
     this.showItemModal.set(true);
   }
 
   openEditItem(item: ChecklistItem) {
-    this.editingItem.set(item);
+    this.editingItemId.set(item.id);
     this.showItemModal.set(true);
   }
 
   openConsultAi(item: ChecklistItem | null) {
-    this.consultingItem.set(item);
+    this.consultingItemId.set(item ? item.id : null);
     this.showAiAdvisorModal.set(true);
   }
 
   openComments(item: ChecklistItem) {
-    this.activeCommentsItem.set(item);
+    this.activeCommentsItemId.set(item.id);
     this.showCommentsModal.set(true);
   }
 
   openAttachments(item: ChecklistItem) {
-    this.activeAttachmentsItem.set(item);
+    this.activeAttachmentsItemId.set(item.id);
     this.showAttachmentsModal.set(true);
   }
 

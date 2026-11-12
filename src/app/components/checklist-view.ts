@@ -253,6 +253,21 @@ const CATEGORY_EN_MAP: Record<string, string> = {
                         <mat-icon class="text-sm">check</mat-icon>
                       }
                     </button>
+                    @if (getPrimaryImage(item); as primaryImg) {
+                      <button
+                        type="button"
+                        (click)="openAttachmentsTrigger.emit(item)"
+                        class="cursor-pointer shrink-0"
+                        [title]="primaryImg.name"
+                      >
+                        <img
+                          [src]="primaryImg.url"
+                          [alt]="primaryImg.name"
+                          referrerpolicy="no-referrer"
+                          class="w-10 h-10 rounded-lg object-cover border border-emerald-300 dark:border-emerald-700 shadow-2xs"
+                        />
+                      </button>
+                    }
                     <div>
                       <div class="font-bold text-sm text-slate-900 dark:text-slate-100">
                         {{ i18n.isRtl() ? item.titleAr : (item.titleEn || item.titleAr) }}
@@ -347,10 +362,28 @@ const CATEGORY_EN_MAP: Record<string, string> = {
                     <button
                       type="button"
                       (click)="openCommentsTrigger.emit(item)"
-                      class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      class="relative p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
                       [title]="i18n.t().comments"
                     >
                       <mat-icon class="text-base">chat_bubble_outline</mat-icon>
+                      @if (item.comments && item.comments.length > 0) {
+                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-600 text-white text-[9px] rounded-full flex items-center justify-center">
+                          {{ item.comments.length }}
+                        </span>
+                      }
+                    </button>
+                    <button
+                      type="button"
+                      (click)="openAttachmentsTrigger.emit(item)"
+                      class="relative p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      [title]="i18n.t().attachments"
+                    >
+                      <mat-icon class="text-base">attach_file</mat-icon>
+                      @if (item.attachments && item.attachments.length > 0) {
+                        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-600 text-white text-[9px] rounded-full flex items-center justify-center">
+                          {{ item.attachments.length }}
+                        </span>
+                      }
                     </button>
                     @if (auth.isEditor()) {
                       <button
@@ -407,11 +440,11 @@ const CATEGORY_EN_MAP: Record<string, string> = {
 
                     <!-- 2. Item Title (الصنف) -->
                     <td class="py-3.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
-                      <div class="flex items-center gap-2">
+                      <div class="flex items-center gap-2.5">
                         <button
                           type="button"
                           (click)="onToggleStatus(item.id)"
-                          class="w-5 h-5 rounded flex items-center justify-center text-xs transition cursor-pointer"
+                          class="w-5 h-5 rounded flex items-center justify-center text-xs transition cursor-pointer shrink-0"
                           [class.bg-emerald-600]="item.status === 'purchased' || item.status === 'delivered'"
                           [class.text-white]="item.status === 'purchased' || item.status === 'delivered'"
                           [class.border]="item.status !== 'purchased' && item.status !== 'delivered'"
@@ -423,6 +456,21 @@ const CATEGORY_EN_MAP: Record<string, string> = {
                             <mat-icon class="text-sm">check</mat-icon>
                           }
                         </button>
+                        @if (getPrimaryImage(item); as primaryImg) {
+                          <button
+                            type="button"
+                            (click)="openAttachmentsTrigger.emit(item)"
+                            class="cursor-pointer shrink-0"
+                            [title]="primaryImg.name"
+                          >
+                            <img
+                              [src]="primaryImg.url"
+                              [alt]="primaryImg.name"
+                              referrerpolicy="no-referrer"
+                              class="w-10 h-10 rounded-lg object-cover border border-emerald-300 dark:border-emerald-700 hover:scale-105 transition shadow-2xs"
+                            />
+                          </button>
+                        }
                         <div>
                           <div class="font-bold text-slate-900 dark:text-slate-100">
                             {{ i18n.isRtl() ? item.titleAr : (item.titleEn || item.titleAr) }}
@@ -440,6 +488,26 @@ const CATEGORY_EN_MAP: Record<string, string> = {
                                   #{{ tag }}
                                 </span>
                               }
+                            }
+                            @if (item.comments && item.comments.length > 0) {
+                              <button
+                                type="button"
+                                (click)="openCommentsTrigger.emit(item)"
+                                class="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 inline-flex items-center gap-0.5 cursor-pointer"
+                              >
+                                <mat-icon class="!text-[10px] !w-2.5 !h-2.5">forum</mat-icon>
+                                <span class="max-w-[140px] truncate">{{ item.comments[item.comments.length - 1].text }}</span>
+                              </button>
+                            }
+                            @if (item.attachments && item.attachments.length > 0) {
+                              <button
+                                type="button"
+                                (click)="openAttachmentsTrigger.emit(item)"
+                                class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 inline-flex items-center gap-0.5 cursor-pointer"
+                              >
+                                <mat-icon class="!text-[10px] !w-2.5 !h-2.5">attach_file</mat-icon>
+                                <span>{{ item.attachments.length }}</span>
+                              </button>
                             }
                           </div>
                         </div>
@@ -774,6 +842,13 @@ export class ChecklistViewComponent {
 
   onDeleteItem(id: string) {
     this.storage.deleteItem(id);
+  }
+
+  getPrimaryImage(item: ChecklistItem) {
+    const list = item.attachments || [];
+    const primary = list.find(a => a.type === 'image' && a.isPrimary && a.url);
+    if (primary) return primary;
+    return [...list].reverse().find(a => a.type === 'image' && a.url) || null;
   }
 
   getGoogleCalendarUrl(item: ChecklistItem): string {

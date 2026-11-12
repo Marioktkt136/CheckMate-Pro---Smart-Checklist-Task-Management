@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { I18nService } from '../services/i18n.service';
 import { StorageService } from '../services/storage.service';
 import { AuthService } from '../services/auth.service';
-import { ChecklistItem, ItemPriority, ItemStatus } from '../core/checklist-rules';
+import { AttachmentTag, ChecklistItem, ItemAttachment, ItemComment, ItemPriority, ItemStatus } from '../core/checklist-rules';
 
 @Component({
   selector: 'app-item-modal',
@@ -26,7 +26,7 @@ import { ChecklistItem, ItemPriority, ItemStatus } from '../core/checklist-rules
                 {{ item() ? i18n.t().editItem : i18n.t().addItem }}
               </h3>
               <p class="text-[11px] text-slate-400">
-                {{ i18n.isRtl() ? 'تفاصيل الصنف والمواصفات والتكلفة والموقع' : 'Item details, specs, costs, comments, and store location' }}
+                {{ i18n.isRtl() ? 'تفاصيل الصنف والمواصفات والتكلفة والتعليقات والمرفقات والموقع' : 'Item details, specs, costs, comments, attachments, and store location' }}
               </p>
             </div>
           </div>
@@ -246,7 +246,90 @@ import { ChecklistItem, ItemPriority, ItemStatus } from '../core/checklist-rules
             </div>
           </div>
 
-          <!-- 12. Comments & Discussion -->
+          <!-- 12. Attached Files & Images (المرفقات والصور) -->
+          <div class="p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                <mat-icon class="!text-base !w-4 !h-4 text-emerald-600">attach_file</mat-icon>
+                <span>{{ i18n.t().attachments }} ({{ localAttachments().length }})</span>
+              </span>
+
+              <div class="flex flex-wrap items-center gap-1.5">
+                <select
+                  formControlName="attachmentTag"
+                  class="text-[11px] px-2 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                >
+                  <option value="photo">📷 {{ i18n.isRtl() ? 'صورة' : 'Photo' }}</option>
+                  <option value="invoice">🧾 {{ i18n.isRtl() ? 'فاتورة' : 'Invoice' }}</option>
+                  <option value="warranty">🛡️ {{ i18n.isRtl() ? 'ضمان' : 'Warranty' }}</option>
+                  <option value="manual">📘 {{ i18n.isRtl() ? 'كتالوج' : 'Manual' }}</option>
+                </select>
+
+                <label class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition cursor-pointer inline-flex items-center gap-1">
+                  <mat-icon class="!text-xs !w-3.5 !h-3.5">add_photo_alternate</mat-icon>
+                  <span>{{ i18n.isRtl() ? 'رفع صورة / ملف' : 'Upload Image / File' }}</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                    (change)="onInlineFileUpload($event)"
+                    class="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            @if (localAttachments().length > 0) {
+              <!-- Live Uploaded Image Preview inside Item Modal -->
+              @if (latestUploadedImage(); as latestImg) {
+                <div class="p-2.5 rounded-xl bg-slate-900 text-white flex items-center gap-3 border border-slate-800">
+                  <img
+                    [src]="latestImg.url"
+                    [alt]="latestImg.name"
+                    referrerpolicy="no-referrer"
+                    class="w-16 h-16 rounded-lg object-cover border border-emerald-400 shrink-0"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <div class="text-xs font-bold text-emerald-300 truncate">{{ latestImg.name }}</div>
+                    <div class="text-[10px] text-slate-400">
+                      {{ i18n.isRtl() ? 'تم رفع وإرفاق الصورة وعرضها بنجاح' : 'Image uploaded, attached, and displayed' }} ({{ latestImg.size }})
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <div class="max-h-32 overflow-y-auto space-y-1.5 pr-1">
+                @for (att of localAttachments(); track att.id) {
+                  <div class="text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      @if (att.type === 'image' && att.url) {
+                        <img
+                          [src]="att.url"
+                          [alt]="att.name"
+                          referrerpolicy="no-referrer"
+                          class="w-8 h-8 rounded object-cover border border-emerald-300 shrink-0"
+                        />
+                      } @else {
+                        <mat-icon class="!text-base !w-4 !h-4 text-emerald-600 shrink-0">description</mat-icon>
+                      }
+                      <span class="font-bold text-slate-800 dark:text-slate-200 truncate">{{ att.name }}</span>
+                      <span class="text-[10px] text-slate-400 shrink-0">({{ att.size }})</span>
+                    </div>
+                    <button
+                      type="button"
+                      (click)="removeInlineAttachment(att.id)"
+                      class="text-rose-500 hover:text-rose-700 p-0.5 cursor-pointer shrink-0"
+                      [title]="i18n.isRtl() ? 'حذف' : 'Remove'"
+                    >
+                      <mat-icon class="!text-sm !w-4 !h-4">delete_outline</mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- 13. Comments & Discussion -->
           <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
             <label for="item-new-comment" class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
               {{ i18n.t().comments }} ({{ localComments().length }})
@@ -260,7 +343,16 @@ import { ChecklistItem, ItemPriority, ItemStatus } from '../core/checklist-rules
                       <span class="font-bold text-slate-800 dark:text-slate-200">{{ c.userName }}: </span>
                       <span class="text-slate-600 dark:text-slate-300">{{ c.text }}</span>
                     </div>
-                    <span class="text-[10px] text-slate-400 shrink-0">{{ c.timestamp }}</span>
+                    <div class="flex items-center gap-1 shrink-0">
+                      <span class="text-[10px] text-slate-400">{{ c.timestamp }}</span>
+                      <button
+                        type="button"
+                        (click)="removeInlineComment(c.id)"
+                        class="text-rose-400 hover:text-rose-600 cursor-pointer"
+                      >
+                        <mat-icon class="!text-xs !w-3.5 !h-3.5">close</mat-icon>
+                      </button>
+                    </div>
                   </div>
                 }
               </div>
@@ -271,13 +363,14 @@ import { ChecklistItem, ItemPriority, ItemStatus } from '../core/checklist-rules
                 id="item-new-comment"
                 type="text"
                 formControlName="newComment"
+                (keydown.enter)="$event.preventDefault(); addInlineComment()"
                 [placeholder]="i18n.t().writeComment"
                 class="flex-1 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="button"
                 (click)="addInlineComment()"
-                class="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-blue-600 hover:text-white text-slate-700 dark:text-slate-200 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1"
               >
                 <mat-icon class="!text-sm !w-4 !h-4">add_comment</mat-icon>
                 <span>{{ i18n.t().addComment }}</span>
@@ -318,7 +411,13 @@ export class ItemModalComponent implements OnInit {
   item = input<ChecklistItem | null>(null);
   closeModal = output<void>();
 
-  localComments = signal< NonNullable<ChecklistItem['comments']> >([]);
+  localComments = signal<ItemComment[]>([]);
+  localAttachments = signal<ItemAttachment[]>([]);
+
+  latestUploadedImage = computed<ItemAttachment | null>(() => {
+    const imgs = this.localAttachments().filter(a => a.type === 'image' && a.url);
+    return imgs.length > 0 ? imgs[imgs.length - 1] : null;
+  });
 
   availableCategories = computed(() => {
     const userCats = this.storage.categories();
@@ -341,6 +440,7 @@ export class ItemModalComponent implements OnInit {
     tagsString: new FormControl(''),
     storeLocation: new FormControl(''),
     newComment: new FormControl(''),
+    attachmentTag: new FormControl<AttachmentTag>('photo'),
   });
 
   isFormValid(): boolean {
@@ -354,6 +454,7 @@ export class ItemModalComponent implements OnInit {
     const it = this.item();
     if (it) {
       this.localComments.set([...(it.comments || [])]);
+      this.localAttachments.set([...(it.attachments || [])]);
       this.form.patchValue({
         category: it.category,
         titleAr: it.titleAr,
@@ -380,22 +481,96 @@ export class ItemModalComponent implements OnInit {
     const txt = (this.form.controls.newComment.value || '').trim();
     if (!txt) return;
     const user = this.auth.currentUser();
-    const nextComm = {
-      id: 'c_' + Date.now(),
-      userName: this.i18n.isRtl() ? user.name : user.nameEn,
-      text: txt,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      avatar: user.avatar,
-    };
-    this.localComments.update(prev => [...prev, nextComm]);
+    const userName = this.i18n.isRtl() ? user.name : (user.nameEn || user.name);
+    const existingItem = this.item();
+    if (existingItem) {
+      const created = this.storage.addComment(existingItem.id, txt, userName, user.avatar);
+      this.localComments.update(prev => [...prev, created]);
+    } else {
+      const nextComm: ItemComment = {
+        id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        userName,
+        text: txt,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        avatar: user.avatar,
+      };
+      this.localComments.update(prev => [...prev, nextComm]);
+    }
     this.form.controls.newComment.setValue('');
+  }
+
+  removeInlineComment(commentId: string) {
+    const existingItem = this.item();
+    if (existingItem) {
+      this.storage.deleteComment(existingItem.id, commentId);
+    }
+    this.localComments.update(prev => prev.filter(c => c.id !== commentId));
+  }
+
+  async onInlineFileUpload(event: Event) {
+    const inputEl = event.target as HTMLInputElement;
+    if (!inputEl.files || inputEl.files.length === 0) return;
+    const files = Array.from(inputEl.files);
+    inputEl.value = '';
+    const tag = (this.form.controls.attachmentTag.value as AttachmentTag) || 'photo';
+
+    for (const file of files) {
+      const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name);
+      const isPdf = file.type.includes('pdf') || /\.pdf$/i.test(file.name);
+      const type: 'pdf' | 'image' | 'doc' = isImage ? 'image' : isPdf ? 'pdf' : 'doc';
+      const sizeStr = file.size >= 1024 * 1024
+        ? (file.size / (1024 * 1024)).toFixed(2) + ' MB'
+        : Math.max(1, Math.round(file.size / 1024)) + ' KB';
+
+      const dataUrl = isImage ? await this.readFileAsDataUrl(file) : undefined;
+      const existingItem = this.item();
+      if (existingItem) {
+        const created = this.storage.addAttachment(existingItem.id, {
+          name: file.name,
+          type,
+          size: sizeStr,
+          url: dataUrl,
+          tag,
+          isPrimary: isImage,
+        });
+        this.localAttachments.update(prev => [...prev, created]);
+      } else {
+        const newAtt: ItemAttachment = {
+          id: 'att_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          name: file.name,
+          type,
+          size: sizeStr,
+          url: dataUrl,
+          date: new Date().toISOString().split('T')[0],
+          tag,
+          isPrimary: isImage,
+        };
+        this.localAttachments.update(prev => [...prev, newAtt]);
+      }
+    }
+  }
+
+  removeInlineAttachment(attachmentId: string) {
+    const existingItem = this.item();
+    if (existingItem) {
+      this.storage.deleteAttachment(existingItem.id, attachmentId);
+    }
+    this.localAttachments.update(prev => prev.filter(a => a.id !== attachmentId));
+  }
+
+  private readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
   }
 
   onSubmit() {
     if (!this.isFormValid()) return;
     const v = this.form.value;
 
-    // If user typed a comment in newComment field without clicking addInlineComment, include it
     const pendingComment = (v.newComment || '').trim();
     if (pendingComment) {
       this.addInlineComment();
@@ -424,9 +599,9 @@ export class ItemModalComponent implements OnInit {
         storeLocation: storeLoc,
         storeName: storeLoc,
         comments: this.localComments(),
+        attachments: this.localAttachments(),
       });
     } else {
-      // Ensure an active project exists before adding an item
       if (this.storage.projects().length === 0 || !this.storage.activeProjectId()) {
         this.storage.addProject({
           nameAr: 'مشروع التجهيز الرئيسي',
@@ -453,6 +628,7 @@ export class ItemModalComponent implements OnInit {
         storeLocation: storeLoc,
         storeName: storeLoc,
         comments: this.localComments(),
+        attachments: this.localAttachments(),
       });
     }
     this.closeModal.emit();

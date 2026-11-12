@@ -5,6 +5,8 @@ import {
   ItemStatus,
   MapLocation,
   UserUiOptions,
+  ItemAttachment,
+  ItemComment,
   createEmptyUserWorkspace,
   normalizeUiOptions,
 } from '../core/checklist-rules';
@@ -642,13 +644,15 @@ export class StorageService {
     }
   }
 
-  addComment(itemId: string, text: string, userName: string, avatar = '👤') {
-    const comment = {
-      id: 'c_' + Date.now(),
+  addComment(itemId: string, text: string, userName: string, avatar = '👤'): ItemComment {
+    const comment: ItemComment = {
+      id: 'c_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
       userName,
-      text,
+      text: text.trim(),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       avatar,
+      pinned: false,
+      edited: false,
     };
 
     this.items.update(prev =>
@@ -664,22 +668,20 @@ export class StorageService {
       })
     );
     this.hasPendingSync.set(true);
-    this.persistUserWorkspace();
+    this.flushPendingSync();
+    return comment;
   }
 
-  addAttachment(itemId: string, attachment: { name: string; size: string; type: 'pdf' | 'image' | 'doc'; url?: string }) {
-    const newAtt = {
-      id: 'att_' + Date.now(),
-      date: new Date().toISOString().split('T')[0],
-      ...attachment,
-    };
-
+  updateComment(itemId: string, commentId: string, updates: Partial<ItemComment>) {
     this.items.update(prev =>
       prev.map(it => {
         if (it.id === itemId) {
+          const updatedComments = (it.comments || []).map(c =>
+            c.id === commentId ? { ...c, ...updates } : c
+          );
           return {
             ...it,
-            attachments: [...(it.attachments || []), newAtt],
+            comments: updatedComments,
             updatedAt: new Date().toISOString(),
           };
         }
@@ -687,7 +689,117 @@ export class StorageService {
       })
     );
     this.hasPendingSync.set(true);
-    this.persistUserWorkspace();
+    this.flushPendingSync();
+  }
+
+  deleteComment(itemId: string, commentId: string) {
+    this.items.update(prev =>
+      prev.map(it => {
+        if (it.id === itemId) {
+          return {
+            ...it,
+            comments: (it.comments || []).filter(c => c.id !== commentId),
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return it;
+      })
+    );
+    this.hasPendingSync.set(true);
+    this.flushPendingSync();
+  }
+
+  addAttachment(
+    itemId: string,
+    attachment: Omit<ItemAttachment, 'id' | 'date'> & { date?: string }
+  ): ItemAttachment {
+    const newAtt: ItemAttachment = {
+      id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      date: attachment.date || new Date().toISOString().split('T')[0],
+      ...attachment,
+    };
+
+    this.items.update(prev =>
+      prev.map(it => {
+        if (it.id === itemId) {
+          const existingAtts = it.attachments || [];
+          const hasPrimaryImage = existingAtts.some(a => a.type === 'image' && a.isPrimary);
+          const shouldBePrimary =
+            newAtt.type === 'image' && (Boolean(newAtt.isPrimary) || !hasPrimaryImage);
+
+          const normalizedExisting = shouldBePrimary
+            ? existingAtts.map(a => ({ ...a, isPrimary: false }))
+            : existingAtts;
+
+          return {
+            ...it,
+            attachments: [
+              ...normalizedExisting,
+              { ...newAtt, isPrimary: shouldBePrimary ? true : newAtt.isPrimary },
+            ],
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return it;
+      })
+    );
+    this.hasPendingSync.set(true);
+    this.flushPendingSync();
+    return newAtt;
+  }
+
+  updateAttachment(itemId: string, attachmentId: string, updates: Partial<ItemAttachment>) {
+    this.items.update(prev =>
+      prev.map(it => {
+        if (it.id === itemId) {
+          const updatedAtts = (it.attachments || []).map(a => {
+            if (a.id === attachmentId) {
+              return { ...a, ...updates };
+            }
+            if (updates.isPrimary) {
+              return { ...a, isPrimary: false };
+            }
+            return a;
+          });
+          return {
+            ...it,
+            attachments: updatedAtts,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return it;
+      })
+    );
+    this.hasPendingSync.set(true);
+    this.flushPendingSync();
+  }
+
+  deleteAttachment(itemId: string, attachmentId: string) {
+    this.items.update(prev =>
+      prev.map(it => {
+        if (it.id === itemId) {
+          const remaining = (it.attachments || []).filter(a => a.id !== attachmentId);
+          // If primary image was deleted and another image exists, promote first image
+          if (
+            remaining.length > 0 &&
+            !remaining.some(a => a.type === 'image' && a.isPrimary)
+          ) {
+            const firstImgIdx = remaining.findIndex(a => a.type === 'image');
+            if (firstImgIdx >= 0) {
+              remaining[firstImgIdx] = { ...remaining[firstImgIdx], isPrimary: true };
+            }
+          }
+          return {
+            ...it,
+            attachments: remaining,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return it;
+      })
+    );
+    this.hasPendingSync.set(true);
+    this.flushPendingSync();
   }
 
   postChatMessage(text: string, sender: string, senderRole: string, avatar = '👤', isAi = false) {
